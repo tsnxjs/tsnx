@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { derivePackageName, toKebabCase } from '@tsnx/core';
+import { derivePackageName, toKebabCase, VERSION } from '@tsnx/core';
 
 export type TemplateType = 'console' | 'library' | 'webapi';
 
@@ -148,7 +148,7 @@ export class TemplateGenerator {
           type: 'webapi',
         },
         dependencies: {
-          '@tsnx/web': '^0.4.0',
+          '@tsnx/web': `^${VERSION}`,
         },
         devDependencies: {
           '@types/node': '^22.13.9',

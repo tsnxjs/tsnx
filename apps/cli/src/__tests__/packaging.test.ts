@@ -59,7 +59,8 @@ describe('TSNX Packaging & Isolated Consumer Verification', () => {
             shell: isWindows,
           },
         );
-        const expV = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf-8')).version; assert.ok(packOutput.includes(`@tsnx/${name}@${expV}`)), `Failed packing @tsnx/${name}: ${packOutput}`);
+        const expectedVersion = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf-8')).version;
+        assert.ok(packOutput.includes(`@tsnx/${name}@${expectedVersion}`), `Failed packing @tsnx/${name}: ${packOutput}`);
         
         // Find produced .tgz
         const files = fs.readdirSync(stageDir);

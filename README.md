@@ -23,7 +23,7 @@
 **TSNX** brings enterprise-grade application architecture, a modular multi-project system, and unified developer tooling to the TypeScript and Node.js ecosystem. 
 
 Designed for teams building robust, maintainable, and highly performant backend systems, TSNX provides:
-- 🏗️ **Native Multi-Project System**: Declarative solution workspaces (`.tswork`) and project manifests (`.tsproj`) with isolated DAG dependency compilation and strict boundaries.
+- 🏗️ **Native Multi-Project System**: Native `tsconfig.json` Project References and `package.json` workspaces with isolated DAG dependency compilation and strict boundaries.
 - 💉 **Strongly-Typed Dependency Injection**: Complete lifetime management (`Singleton`, `Scoped`, `Transient`), captive dependency prevention, circular reference detection, and deterministic reverse-order disposal.
 - 🚀 **High-Performance Web API**: Layered onion middleware pipeline, route groups, structured endpoint metadata, and declarative request binding with recursive compile-time type inference.
 - 📑 **Native OpenAPI 3.1 & Interactive Docs**: Automated schema extraction (`@tsnx/openapi`) and embedded zero-config Scalar interactive API documentation (`@tsnx/scalar`).
@@ -85,7 +85,7 @@ await app.run();
 | [`@tsnx/scalar`](./packages/scalar) | `1.0.0-rc.1` | Embedded interactive Scalar API reference documentation endpoint |
 | [`@tsnx/hosting`](./packages/hosting) | `1.0.0-rc.1` | Enterprise application hosting, Dependency Injection, Configuration, Logging & Hosted Services |
 | [`@tsnx/hosting-abstractions`](./packages/hosting-abstractions) | `1.0.0-rc.1` | Zero-dependency contracts for DI (`IServiceCollection`), Config, Logging & Lifecycle |
-| [`@tsnx/core`](./packages/core) | `1.0.0-rc.1` | Project manifests (`.tsproj`), workspaces (`.tswork`), and DAG dependency graph |
+| [`@tsnx/core`](./packages/core) | `1.0.0-rc.1` | Native TypeScript projects (`tsconfig.json`), workspaces, and DAG dependency graph |
 | [`@tsnx/build`](./packages/build) | `1.0.0-rc.1` | Compiler configuration generator, orchestrator, and package synchronization |
 | [`@tsnx/cli`](./apps/cli) | `1.0.0-rc.1` | Unified developer CLI (`tsnx create`, `build`, `run`, `test`, `watch`, `restore`) |
 
@@ -129,6 +129,7 @@ tsnx create library MyLib
 
 ## Documentation
 
+- [Documentation website (Next.js + shadcn/ui)](./apps/docs) — run locally with `pnpm --filter @tsnx/docs dev`.
 - [Runtime Specifications & Architecture Guarantees](./docs/KNOWN_LIMITATIONS.md)
 - [Release Changelog](./CHANGELOG.md)
 - [Security Policy](./SECURITY.md)
