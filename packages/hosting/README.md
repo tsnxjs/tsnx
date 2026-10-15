@@ -1,6 +1,6 @@
 # @tsnx/hosting
 
-Application hosting foundation for TSNX, inspired by ASP.NET Core Generic Host.
+Enterprise application hosting foundation for TSNX, providing structured dependency injection, hierarchical configuration, leveled logging, and coordinated application lifecycle management.
 
 ## Features
 

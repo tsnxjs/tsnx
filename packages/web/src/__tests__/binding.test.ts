@@ -84,6 +84,43 @@ describe('HTTP Request Binding - Primitives & Modifiers', () => {
     assert.equal(validSample.dueDate, undefined);
     assert.equal(validSample.description, undefined);
   });
+
+  it('M-22: infers recursive types accurately for nested arrays and nullables', () => {
+    const Schema = {
+      nullableItems: array(nullable(Number)),
+      nestedMatrix: array(array(Number)),
+      nullableArray: nullable(array(Number)),
+      nestedNullableMatrix: array(array(nullable(String))),
+    };
+
+    type InferredType = Infer<typeof Schema>;
+
+    // Type assertion to ensure compile-time types match runtime expectations
+    const sample: InferredType = {
+      nullableItems: [1, null, 3],
+      nestedMatrix: [[1, 2], [3, 4]],
+      nullableArray: null,
+      nestedNullableMatrix: [['a', null], ['b']],
+    };
+
+    assert.deepEqual(sample.nullableItems, [1, null, 3]);
+    assert.deepEqual(sample.nestedMatrix, [[1, 2], [3, 4]]);
+    assert.equal(sample.nullableArray, null);
+    assert.deepEqual(sample.nestedNullableMatrix, [['a', null], ['b']]);
+
+    // Runtime binding verification
+    const bound = bindBody(Schema, {
+      nullableItems: [10, null, 20],
+      nestedMatrix: [[1]],
+      nullableArray: [1, 2],
+      nestedNullableMatrix: [[null]],
+    });
+
+    assert.deepEqual(bound.nullableItems, [10, null, 20]);
+    assert.deepEqual(bound.nestedMatrix, [[1]]);
+    assert.deepEqual(bound.nullableArray, [1, 2]);
+    assert.deepEqual(bound.nestedNullableMatrix, [[null]]);
+  });
 });
 
 describe('HTTP Request Binding - bindBody() (Strict JSON)', () => {

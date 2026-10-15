@@ -1,6 +1,6 @@
 {
   "name": "@tsnx/scalar",
-  "version": "0.1.0",
+  "version": "1.0.0-rc.1",
   "description": "TSNX Interactive API Reference via Scalar",
   "license": "MIT",
   "type": "module",
@@ -16,7 +16,9 @@
     "dist",
     "!dist/__tests__",
     "!dist/**/*.tsbuildinfo",
-    "README.md"
+    "!dist/**/*.map",
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=18.0.0"
@@ -33,5 +35,12 @@
   "dependencies": {
     "@tsnx/web": "workspace:*",
     "@types/node": "^22.13.9"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tsnx/tsnx.git",
+    "directory": "packages/scalar"
+  },
+  "bugs": "https://github.com/tsnx/tsnx/issues",
+  "homepage": "https://github.com/tsnx/tsnx#readme"
 }

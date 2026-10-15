@@ -1,6 +1,6 @@
 {
   "name": "@tsnx/openapi",
-  "version": "0.1.0",
+  "version": "1.0.0-rc.1",
   "description": "TSNX OpenAPI 3.1 Document Generation via Static Endpoint Introspection",
   "license": "MIT",
   "type": "module",
@@ -16,7 +16,9 @@
     "dist",
     "!dist/__tests__",
     "!dist/**/*.tsbuildinfo",
-    "README.md"
+    "!dist/**/*.map",
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=18.0.0"
@@ -34,5 +36,12 @@
     "@tsnx/hosting": "workspace:*",
     "@tsnx/web": "workspace:*",
     "@types/node": "^22.13.9"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tsnx/tsnx.git",
+    "directory": "packages/openapi"
+  },
+  "bugs": "https://github.com/tsnx/tsnx/issues",
+  "homepage": "https://github.com/tsnx/tsnx#readme"
 }

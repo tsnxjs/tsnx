@@ -607,4 +607,42 @@ describe('HTTP Request Lifecycle & Cancellation - 12 Acceptance Criteria', () =>
       (err: any) => err.name === 'TypeError' || err.code === 'ECONNREFUSED' || err.cause?.code === 'ECONNREFUSED'
     );
   });
+
+  test('M-25: concurrent startup (Promise.all) builds only one host and cleans up signal listeners and disposables cleanly', async () => {
+    const initialSigint = process.listenerCount('SIGINT');
+    const initialSigterm = process.listenerCount('SIGTERM');
+
+    let factoryCalls = 0;
+    let disposals = 0;
+
+    const builder = WebApplication.createBuilder();
+    builder.configureServer({ port: 0, host: '127.0.0.1' });
+
+    builder.services.addHostedService(() => {
+      factoryCalls++;
+      return {
+        async start() {},
+        async stop() {},
+        dispose() {
+          disposals++;
+        },
+      };
+    });
+
+    const webApp = builder.build();
+
+    // Trigger concurrent startups
+    await Promise.all([webApp.start(), webApp.start()]);
+
+    assert.strictEqual(factoryCalls, 1, 'Hosted service factory should only be invoked once');
+
+    // Dispose the application
+    await webApp.dispose();
+
+    assert.strictEqual(disposals, 1, 'Hosted service should be disposed exactly once');
+
+    // Verify signal listeners returned to baseline
+    assert.strictEqual(process.listenerCount('SIGINT'), initialSigint, 'SIGINT listeners must return to baseline');
+    assert.strictEqual(process.listenerCount('SIGTERM'), initialSigterm, 'SIGTERM listeners must return to baseline');
+  });
 });

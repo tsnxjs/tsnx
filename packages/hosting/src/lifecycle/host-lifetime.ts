@@ -196,80 +196,93 @@ export class HostLifecycleCoordinator {
     }
     this.isStopping = true;
 
-    this.activeStopPromise = (async () => {
-      this.lifetime.notifyStopping();
+    let resolvePromise!: () => void;
+    let rejectPromise!: (err: unknown) => void;
+    this.activeStopPromise = new Promise<void>((resolve, reject) => {
+      resolvePromise = resolve;
+      rejectPromise = reject;
+    });
 
-      const shutdownCts = new AbortController();
-      let timeoutTimer: NodeJS.Timeout | undefined;
-
-      let onExternalCancel: (() => void) | undefined;
-      if (cancellationToken?.aborted) {
-        shutdownCts.abort(cancellationToken.reason);
-      } else if (cancellationToken) {
-        onExternalCancel = () => shutdownCts.abort(cancellationToken.reason);
-        cancellationToken.addEventListener(
-          'abort',
-          onExternalCancel,
-          { once: true },
-        );
-      }
-
-      // 1. Abort in-flight startup immediately if in progress!
-      if (this.startupCts && !this.startupCts.signal.aborted) {
-        this.startupCts.abort(
-          cancellationToken?.reason ?? new DOMException('Shutdown initiated during startup', 'AbortError'),
-        );
-      }
-
-      // Hard limit: Timeout promise enforces absolute deadline even if service ignores signal
-      const timeoutPromise = new Promise<'timeout'>((resolve) => {
-        if (shutdownCts.signal.aborted) {
-          return resolve('timeout');
-        }
-        shutdownCts.signal.addEventListener('abort', () => resolve('timeout'), { once: true });
-        timeoutTimer = setTimeout(() => {
-          this.logger?.warn(
-            `Shutdown timed out after ${this.shutdownTimeoutMs}ms. Forcing shutdown cancellation.`,
-          );
-          shutdownCts.abort();
-          resolve('timeout');
-        }, this.shutdownTimeoutMs);
-      });
-
-      const stopServicesTask = (async () => {
-        // If startup is in flight, wait for it to settle or be cancelled
-        if (this.activeStartPromise) {
-          try {
-            await this.activeStartPromise;
-          } catch {
-            // Expected startup cancellation error
-          }
-        }
-
-        const servicesToStop = [...this.startedServices].reverse();
-        for (const service of servicesToStop) {
-          try {
-            await service.stop(shutdownCts.signal);
-          } catch (err: unknown) {
-            this.logger?.error('Error stopping hosted service:', err);
-          }
-        }
-      })();
-
+    (async () => {
       try {
-        const raceResult = await Promise.race([stopServicesTask, timeoutPromise]);
-        if (raceResult === 'timeout') {
-          this.logger?.warn('Shutdown forced: one or more services failed to stop before timeout.');
+        this.lifetime.notifyStopping();
+
+        const shutdownCts = new AbortController();
+        let timeoutTimer: NodeJS.Timeout | undefined;
+
+        let onExternalCancel: (() => void) | undefined;
+        if (cancellationToken?.aborted) {
+          shutdownCts.abort(cancellationToken.reason);
+        } else if (cancellationToken) {
+          onExternalCancel = () => shutdownCts.abort(cancellationToken.reason);
+          cancellationToken.addEventListener(
+            'abort',
+            onExternalCancel,
+            { once: true },
+          );
         }
-      } finally {
-        if (timeoutTimer) clearTimeout(timeoutTimer);
-        if (cancellationToken && onExternalCancel) {
-          cancellationToken.removeEventListener('abort', onExternalCancel);
+
+        // 1. Abort in-flight startup immediately if in progress!
+        if (this.startupCts && !this.startupCts.signal.aborted) {
+          this.startupCts.abort(
+            cancellationToken?.reason ?? new DOMException('Shutdown initiated during startup', 'AbortError'),
+          );
         }
-        this.startedServices.length = 0;
-        this.isStopped = true;
-        this.unregisterSignals();
-        this.lifetime.notifyStopped();
+
+        // Hard limit: Timeout promise enforces absolute deadline even if service ignores signal
+        const timeoutPromise = new Promise<'timeout'>((resolve) => {
+          if (shutdownCts.signal.aborted) {
+            return resolve('timeout');
+          }
+          shutdownCts.signal.addEventListener('abort', () => resolve('timeout'), { once: true });
+          timeoutTimer = setTimeout(() => {
+            this.logger?.warn(
+              `Shutdown timed out after ${this.shutdownTimeoutMs}ms. Forcing shutdown cancellation.`,
+            );
+            shutdownCts.abort();
+            resolve('timeout');
+          }, this.shutdownTimeoutMs);
+        });
+
+        const stopServicesTask = (async () => {
+          // If startup is in flight, wait for it to settle or be cancelled
+          if (this.activeStartPromise) {
+            try {
+              await this.activeStartPromise;
+            } catch {
+              // Expected startup cancellation error
+            }
+          }
+
+          const servicesToStop = [...this.startedServices].reverse();
+          for (const service of servicesToStop) {
+            try {
+              await service.stop(shutdownCts.signal);
+            } catch (err: unknown) {
+              this.logger?.error('Error stopping hosted service:', err);
+            }
+          }
+        })();
+
+        try {
+          const raceResult = await Promise.race([stopServicesTask, timeoutPromise]);
+          if (raceResult === 'timeout') {
+            this.logger?.warn('Shutdown forced: one or more services failed to stop before timeout.');
+          }
+        } finally {
+          if (timeoutTimer) clearTimeout(timeoutTimer);
+          if (cancellationToken && onExternalCancel) {
+            cancellationToken.removeEventListener('abort', onExternalCancel);
+          }
+          this.startedServices.length = 0;
+          this.isStopped = true;
+          this.unregisterSignals();
+          this.lifetime.notifyStopped();
+        }
+
+        resolvePromise();
+      } catch (err) {
+        rejectPromise(err);
       }
     })();
 

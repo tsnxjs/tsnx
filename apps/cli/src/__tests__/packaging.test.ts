@@ -59,7 +59,7 @@ describe('TSNX Packaging & Isolated Consumer Verification', () => {
             shell: isWindows,
           },
         );
-        assert.ok(packOutput.includes(`@tsnx/${name}@0.4.1`), `Failed packing @tsnx/${name}: ${packOutput}`);
+        const expV = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf-8')).version; assert.ok(packOutput.includes(`@tsnx/${name}@${expV}`)), `Failed packing @tsnx/${name}: ${packOutput}`);
         
         // Find produced .tgz
         const files = fs.readdirSync(stageDir);
@@ -77,12 +77,13 @@ describe('TSNX Packaging & Isolated Consumer Verification', () => {
         assert.ok(fileList.includes('package/README.md'), `${name} tarball missing README.md`);
         assert.ok(fileList.some((f) => f.startsWith('package/dist/')), `${name} tarball missing dist files`);
 
-        // Must NOT contain src/ or __tests__/ or .tsbuildinfo
+        // Must NOT contain src/ or __tests__ or .tsbuildinfo or .map
         const invalidFiles = fileList.filter(
           (f) =>
             f.startsWith('package/src/') ||
             f.includes('__tests__') ||
             f.endsWith('.tsbuildinfo') ||
+            f.endsWith('.map') ||
             f === 'package/tsconfig.json',
         );
         assert.deepEqual(invalidFiles, [], `${name} tarball contains unwhitelisted files: ${invalidFiles.join(', ')}`);
@@ -127,7 +128,7 @@ describe('TSNX Packaging & Isolated Consumer Verification', () => {
           encoding: 'utf-8',
           shell: isWindows,
         });
-        assert.ok(versionOutput.includes('0.4.1'));
+        assert.ok(versionOutput.includes('1.0.0-rc.1'));
 
         // B. Consumer: Console Application (create -> build -> run)
         const createConsoleOutput = execFileSync(

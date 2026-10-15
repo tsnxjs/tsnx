@@ -139,24 +139,85 @@ export class WatchSupervisor {
   }
 
   private watchDirectorySubtree(dir: string, onFileChanged: (isManifest: boolean) => void): void {
+    const dirWatchers = new Map<string, fs.FSWatcher>();
+
+    const removeWatcherFromList = (w: fs.FSWatcher) => {
+      let idx: number;
+      while ((idx = this.watchers.indexOf(w)) !== -1) {
+        this.watchers.splice(idx, 1);
+      }
+    };
+
+    const removeWatcherSubtree = (deletedPath: string) => {
+      for (const [watchedPath, watcher] of Array.from(dirWatchers.entries())) {
+        if (watchedPath === deletedPath || watchedPath.startsWith(deletedPath + path.sep)) {
+          watcher.removeAllListeners();
+          try {
+            watcher.close();
+          } catch {}
+          if (dirWatchers.get(watchedPath) === watcher) {
+            dirWatchers.delete(watchedPath);
+          }
+          removeWatcherFromList(watcher);
+        }
+      }
+    };
+
     const addWatcher = (subDir: string) => {
+      // If we already have a watcher for this path, close and replace it to avoid stale handles
+      const existing = dirWatchers.get(subDir);
+      if (existing) {
+        existing.removeAllListeners();
+        try {
+          existing.close();
+        } catch {}
+        if (dirWatchers.get(subDir) === existing) {
+          dirWatchers.delete(subDir);
+        }
+        removeWatcherFromList(existing);
+      }
+
       try {
         const watcher = fs.watch(subDir, (_event, filename) => {
           if (filename) {
             const fullPath = path.join(subDir, filename);
             if (!filename.includes('.git') && !filename.includes('dist') && !filename.includes('node_modules')) {
               try {
-                if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
-                  // A new subdirectory was created, watch it
-                  addWatcher(fullPath);
+                if (fs.existsSync(fullPath)) {
+                  if (fs.statSync(fullPath).isDirectory()) {
+                    // A new or recreated subdirectory was created, recursively walk and watch it
+                    walk(fullPath);
+                  }
+                } else {
+                  // Path was deleted or renamed away; clean up stale watchers on this path or its subtree
+                  removeWatcherSubtree(fullPath);
                 }
-              } catch {}
+              } catch {
+                removeWatcherSubtree(fullPath);
+              }
               onFileChanged(false);
             }
           } else {
+            if (!fs.existsSync(subDir)) {
+              removeWatcherSubtree(subDir);
+            }
             onFileChanged(false);
           }
         });
+
+        watcher.on('error', () => {
+          if (dirWatchers.get(subDir) === watcher) {
+            removeWatcherSubtree(subDir);
+          }
+        });
+        watcher.on('close', () => {
+          if (dirWatchers.get(subDir) === watcher) {
+            dirWatchers.delete(subDir);
+          }
+          removeWatcherFromList(watcher);
+        });
+
+        dirWatchers.set(subDir, watcher);
         this.watchers.push(watcher);
       } catch {}
     };
@@ -383,6 +444,10 @@ export class WatchSupervisor {
 
   closeWatchersForTesting(): void {
     this.closeWatchers();
+  }
+
+  getWatcherCountForTesting(): number {
+    return this.watchers.length;
   }
 }
 

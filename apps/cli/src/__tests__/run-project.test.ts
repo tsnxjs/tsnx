@@ -460,4 +460,175 @@ setInterval(() => {}, 1000);
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it('M-24: watchDirectorySubtree recursively watches newly created nested subtrees and detects file writes within them', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tsnx-watch-new-subtrees-'));
+
+    try {
+      const srcDir = path.join(tmpDir, 'src');
+      fs.mkdirSync(srcDir, { recursive: true });
+
+      const supervisor = new WatchSupervisor({ kind: 'project', project: {} as any, filePath: '' }, {});
+
+      let changeDetected = false;
+      supervisor.watchDirectorySubtreeForTesting(srcDir, () => {
+        changeDetected = true;
+      });
+
+      // Small delay to ensure fs.watch is fully armed
+      await new Promise((r) => setTimeout(r, 50));
+
+      // Create a brand new deeply nested directory tree after watcher is running
+      const newDeepDir = path.join(srcDir, 'modules', 'orders', 'controllers');
+      fs.mkdirSync(newDeepDir, { recursive: true });
+
+      // Small delay for directory creation events to settle and watchers to be attached
+      await new Promise((r) => setTimeout(r, 100));
+      changeDetected = false;
+
+      // Write a file in the deepest newly created leaf directory
+      const testFile = path.join(newDeepDir, 'order.controller.ts');
+      fs.writeFileSync(testFile, 'export class OrderController {}', 'utf-8');
+
+      // Wait for watcher notification on the newly created leaf file
+      await new Promise<void>((resolve, reject) => {
+        let attempts = 0;
+        const interval = setInterval(() => {
+          attempts++;
+          if (changeDetected) {
+            clearInterval(interval);
+            resolve();
+          } else if (attempts > 40) { // 2s timeout
+            clearInterval(interval);
+            reject(new Error('Watch event not detected in newly created leaf directory'));
+          }
+        }, 50);
+      });
+
+      assert.strictEqual(changeDetected, true, 'Subtree watcher must detect change in newly created deep leaf directory');
+      supervisor.closeWatchersForTesting();
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('M-24: watchDirectorySubtree purges stale watchers on deletion and re-arms on recreation (create -> edit -> delete -> recreate -> edit)', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tsnx-watch-recreate-'));
+
+    try {
+      const srcDir = path.join(tmpDir, 'src');
+      fs.mkdirSync(srcDir, { recursive: true });
+
+      const supervisor = new WatchSupervisor({ kind: 'project', project: {} as any, filePath: '' }, {});
+
+      let changeDetected = false;
+      supervisor.watchDirectorySubtreeForTesting(srcDir, () => {
+        changeDetected = true;
+      });
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      // 1. Create nested subtree
+      const nestedDir = path.join(srcDir, 'features', 'billing', 'services');
+      fs.mkdirSync(nestedDir, { recursive: true });
+      await new Promise((r) => setTimeout(r, 100));
+
+      // 2. Edit 1: write file to leaf
+      changeDetected = false;
+      const testFile = path.join(nestedDir, 'billing.service.ts');
+      fs.writeFileSync(testFile, 'export class BillingServiceV1 {}', 'utf-8');
+
+      await new Promise<void>((resolve, reject) => {
+        let attempts = 0;
+        const interval = setInterval(() => {
+          attempts++;
+          if (changeDetected) {
+            clearInterval(interval);
+            resolve();
+          } else if (attempts > 40) {
+            clearInterval(interval);
+            reject(new Error('First write not detected in nested directory'));
+          }
+        }, 50);
+      });
+      assert.strictEqual(changeDetected, true, 'First edit must be detected');
+
+      // 3. Delete subtree
+      fs.rmSync(path.join(srcDir, 'features'), { recursive: true, force: true });
+      await new Promise((r) => setTimeout(r, 150));
+
+      // 4. Recreate identical subtree
+      fs.mkdirSync(nestedDir, { recursive: true });
+      await new Promise((r) => setTimeout(r, 150));
+
+      // 5. Edit 2: write file to recreated leaf
+      changeDetected = false;
+      fs.writeFileSync(testFile, 'export class BillingServiceV2 {}', 'utf-8');
+
+      await new Promise<void>((resolve, reject) => {
+        let attempts = 0;
+        const interval = setInterval(() => {
+          attempts++;
+          if (changeDetected) {
+            clearInterval(interval);
+            resolve();
+          } else if (attempts > 40) {
+            clearInterval(interval);
+            reject(new Error('Second write not detected after directory recreation'));
+          }
+        }, 50);
+      });
+      assert.strictEqual(changeDetected, true, 'Second edit after directory recreation must be detected');
+
+      supervisor.closeWatchersForTesting();
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('M-24: rapid delete and recreate cycles without delay purge old instances cleanly and return to baseline handles', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tsnx-watch-rapid-'));
+
+    try {
+      const srcDir = path.join(tmpDir, 'src');
+      fs.mkdirSync(srcDir, { recursive: true });
+
+      const supervisor = new WatchSupervisor({ kind: 'project', project: {} as any, filePath: '' }, {});
+
+      supervisor.watchDirectorySubtreeForTesting(srcDir, () => {});
+
+      // Baseline: exactly 1 watcher for srcDir
+      assert.strictEqual(supervisor.getWatcherCountForTesting(), 1, 'Baseline watcher count should be 1');
+
+      const subtreeRoot = path.join(srcDir, 'nested');
+      const deepLeaf = path.join(subtreeRoot, 'a', 'b', 'c');
+
+      // 8 rapid delete/recreate cycles with zero delay
+      for (let i = 0; i < 8; i++) {
+        if (fs.existsSync(subtreeRoot)) {
+          fs.rmSync(subtreeRoot, { recursive: true, force: true });
+        }
+        fs.mkdirSync(deepLeaf, { recursive: true });
+      }
+
+      // Small delay to allow any pending file events to settle
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Finally delete the entire subtree
+      fs.rmSync(subtreeRoot, { recursive: true, force: true });
+      await new Promise((r) => setTimeout(r, 200));
+
+      // After final deletion, all subtree watchers must be purged and count returns to baseline 1
+      assert.strictEqual(
+        supervisor.getWatcherCountForTesting(),
+        1,
+        'Watcher count must return to baseline (1) after subtree is removed',
+      );
+
+      supervisor.closeWatchersForTesting();
+      assert.strictEqual(supervisor.getWatcherCountForTesting(), 0, 'All watchers closed');
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });

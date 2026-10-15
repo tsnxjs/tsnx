@@ -136,14 +136,24 @@ export class AppHost implements IHost {
       }
       return;
     }
-    if (this.state === HostState.Stopping && this.stopPromise) {
+    if (this.stopPromise) {
       return this.stopPromise;
     }
 
     this.state = HostState.Stopping;
-    this.stopPromise = (async () => {
+    let resolveStop!: () => void;
+    let rejectStop!: (err: unknown) => void;
+    this.stopPromise = new Promise<void>((resolve, reject) => {
+      resolveStop = resolve;
+      rejectStop = reject;
+    });
+
+    (async () => {
       try {
         await this.coordinator.stop(cancellationToken);
+        resolveStop();
+      } catch (err) {
+        rejectStop(err);
       } finally {
         this.state = HostState.Stopped;
       }
@@ -160,62 +170,74 @@ export class AppHost implements IHost {
       return this.disposePromise;
     }
 
-    this.disposePromise = (async () => {
-      const errors: unknown[] = [];
+    let resolveDispose!: () => void;
+    let rejectDispose!: (err: unknown) => void;
+    this.disposePromise = new Promise<void>((resolve, reject) => {
+      resolveDispose = resolve;
+      rejectDispose = reject;
+    });
 
-      // 1. Ensure host is stopped first
+    (async () => {
       try {
-        await this.stop();
-      } catch (err) {
-        errors.push(err);
-      }
+        const errors: unknown[] = [];
 
-      // Defensive: ensure coordinator is definitely stopped and signal listeners removed
-      try {
-        if (!this.coordinator.lifetime.applicationStopped.aborted) {
-          await this.coordinator.stop();
-        }
-      } catch (err) {
-        errors.push(err);
-      }
-
-      // 2. Dispose framework-created hosted services in reverse order of creation
-      // (Only dispose services that are NOT owned/managed by the DI container)
-      const servicesToDispose = this.hostedServices.filter(
-        (s) =>
-          (!this.frameworkCreatedHostedServices || this.frameworkCreatedHostedServices.has(s)) &&
-          !(this.services as any).isOwned?.(s),
-      );
-
-      for (const service of [...servicesToDispose].reverse()) {
+        // 1. Ensure host is stopped first
         try {
-          if (typeof (service as any)[Symbol.asyncDispose] === 'function') {
-            await (service as any)[Symbol.asyncDispose]();
-          } else if (typeof (service as any)[Symbol.dispose] === 'function') {
-            (service as any)[Symbol.dispose]();
-          } else if (typeof (service as any).dispose === 'function') {
-            await (service as any).dispose();
+          await this.stop();
+        } catch (err) {
+          errors.push(err);
+        }
+
+        // Defensive: ensure coordinator is definitely stopped and signal listeners removed
+        try {
+          if (!this.coordinator.lifetime.applicationStopped.aborted) {
+            await this.coordinator.stop();
           }
         } catch (err) {
           errors.push(err);
         }
-      }
 
-      // 3. Dispose DI service provider
-      try {
-        if (typeof (this.services as any).dispose === 'function') {
-          await (this.services as any).dispose();
+        // 2. Dispose framework-created hosted services in reverse order of creation
+        // (Only dispose services that are NOT owned/managed by the DI container)
+        const servicesToDispose = this.hostedServices.filter(
+          (s) =>
+            (!this.frameworkCreatedHostedServices || this.frameworkCreatedHostedServices.has(s)) &&
+            !(this.services as any).isOwned?.(s),
+        );
+
+        for (const service of [...servicesToDispose].reverse()) {
+          try {
+            if (typeof (service as any)[Symbol.asyncDispose] === 'function') {
+              await (service as any)[Symbol.asyncDispose]();
+            } else if (typeof (service as any)[Symbol.dispose] === 'function') {
+              (service as any)[Symbol.dispose]();
+            } else if (typeof (service as any).dispose === 'function') {
+              await (service as any).dispose();
+            }
+          } catch (err) {
+            errors.push(err);
+          }
         }
+
+        // 3. Dispose DI service provider
+        try {
+          if (typeof (this.services as any).dispose === 'function') {
+            await (this.services as any).dispose();
+          }
+        } catch (err) {
+          errors.push(err);
+        }
+
+        this.isDisposed = true;
+
+        if (errors.length === 1) {
+          throw errors[0];
+        } else if (errors.length > 1) {
+          throw new AggregateError(errors, 'One or more errors occurred while disposing host');
+        }
+        resolveDispose();
       } catch (err) {
-        errors.push(err);
-      }
-
-      this.isDisposed = true;
-
-      if (errors.length === 1) {
-        throw errors[0];
-      } else if (errors.length > 1) {
-        throw new AggregateError(errors, 'One or more errors occurred while disposing host');
+        rejectDispose(err);
       }
     })();
 

@@ -1,6 +1,6 @@
 {
   "name": "@tsnx/core",
-  "version": "0.4.1",
+  "version": "1.0.0-rc.1",
   "description": "TSNX Core - Project, Workspace, and Project Graph engine",
   "license": "MIT",
   "type": "module",
@@ -17,7 +17,9 @@
     "dist",
     "!dist/__tests__",
     "!dist/**/*.tsbuildinfo",
-    "README.md"
+    "!dist/**/*.map",
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=18.0.0"
@@ -33,5 +35,12 @@
   },
   "dependencies": {
     "yaml": "^2.9.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tsnx/tsnx.git",
+    "directory": "packages/core"
+  },
+  "bugs": "https://github.com/tsnx/tsnx/issues",
+  "homepage": "https://github.com/tsnx/tsnx#readme"
 }

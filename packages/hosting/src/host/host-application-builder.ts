@@ -20,6 +20,7 @@ export class HostApplicationBuilder {
   public readonly logging = new LoggerFactory(LogLevel.Information);
   public readonly options: HostOptions = {};
   public readonly serviceProviderOptions: ServiceProviderOptions = {};
+  private lastRollbackPromise?: Promise<void>;
 
   public get configuration(): Configuration {
     return this.config;
@@ -123,35 +124,69 @@ export class HostApplicationBuilder {
     const frameworkCreatedServices = new Set<HostedService>();
     const startupValidators: Array<() => void> = [];
 
-    const rollback = () => {
-      // Clean up framework-created hosted services in reverse order
+    const rollback = (): Promise<void> | void => {
+      // Clean up framework-created hosted services in reverse order sequentially
       const instancesToDispose = [...frameworkCreatedServices].reverse();
+      let chain: Promise<void> | null = null;
+
       for (const inst of instancesToDispose) {
         if (!inst || typeof inst !== 'object') continue;
-        try {
-          if (typeof (inst as any)[Symbol.dispose] === 'function') {
-            (inst as any)[Symbol.dispose]();
-          } else if (typeof (inst as any).dispose === 'function') {
-            const res = (inst as any).dispose();
-            if (res && typeof res.then === 'function') {
-              res.catch(() => {});
+        if (chain) {
+          chain = chain.then(async () => {
+            try {
+              if (typeof (inst as any)[Symbol.asyncDispose] === 'function') {
+                await (inst as any)[Symbol.asyncDispose]();
+              } else if (typeof (inst as any)[Symbol.dispose] === 'function') {
+                (inst as any)[Symbol.dispose]();
+              } else if (typeof (inst as any).dispose === 'function') {
+                await (inst as any).dispose();
+              }
+            } catch {
+              // ignore rollback errors to ensure full cleanup
             }
-          } else if (typeof (inst as any)[Symbol.asyncDispose] === 'function') {
-            (inst as any)[Symbol.asyncDispose]().catch(() => {});
+          });
+        } else {
+          try {
+            if (typeof (inst as any)[Symbol.asyncDispose] === 'function') {
+              const res = (inst as any)[Symbol.asyncDispose]();
+              if (res && typeof res.then === 'function') {
+                chain = res.catch(() => {});
+              }
+            } else if (typeof (inst as any)[Symbol.dispose] === 'function') {
+              (inst as any)[Symbol.dispose]();
+            } else if (typeof (inst as any).dispose === 'function') {
+              const res = (inst as any).dispose();
+              if (res && typeof res.then === 'function') {
+                chain = res.catch(() => {});
+              }
+            }
+          } catch {
+            // ignore rollback errors to ensure full cleanup
+          }
+        }
+      }
+
+      if (chain) {
+        const finalChain = chain.then(async () => {
+          try {
+            await serviceProvider.dispose();
+          } catch {
+            // ignore rollback errors to ensure full cleanup
+          }
+        });
+        this.lastRollbackPromise = finalChain;
+        return finalChain;
+      } else {
+        try {
+          const res = serviceProvider.dispose();
+          if (res && typeof res.then === 'function') {
+            const finalChain = res.catch(() => {});
+            this.lastRollbackPromise = finalChain;
+            return finalChain;
           }
         } catch {
           // ignore rollback errors to ensure full cleanup
         }
-      }
-
-      // Clean up service provider root and its container-owned instances
-      try {
-        const res = serviceProvider.dispose();
-        if (res && typeof res.then === 'function') {
-          res.catch(() => {});
-        }
-      } catch {
-        // ignore rollback errors to ensure full cleanup
       }
     };
 
@@ -208,5 +243,16 @@ export class HostApplicationBuilder {
       startupValidators,
       frameworkCreatedServices,
     );
+  }
+
+  public async buildAsync(options?: ServiceProviderOptions): Promise<IHost> {
+    try {
+      return this.build(options);
+    } catch (err) {
+      if (this.lastRollbackPromise) {
+        await this.lastRollbackPromise;
+      }
+      throw err;
+    }
   }
 }

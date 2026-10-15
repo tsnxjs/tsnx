@@ -437,4 +437,77 @@ describe('@tsnx/hosting: AppHost & HostApplicationBuilder', () => {
     assert.equal(service1Disposed, true, 'Earlier hosted service must be disposed on build failure');
     assert.equal(singletonDisposed, true, 'Earlier resolved singletons in container must be disposed on build failure');
   });
+
+  it('M-18: synchronous reentrancy from applicationStopping does not cause duplicate stop or disposal', async () => {
+    const builder = AppHost.createBuilder();
+    let stopCallCount = 0;
+    let disposeCallCount = 0;
+
+    let appRef: any;
+    builder.addHostedService(() => ({
+      async start() {},
+      async stop() {
+        stopCallCount++;
+        await new Promise((r) => setTimeout(r, 20));
+      },
+      dispose() {
+        disposeCallCount++;
+      },
+    }));
+
+    const app = builder.build();
+    appRef = app;
+    app.lifetime!.applicationStopping.addEventListener('abort', () => {
+      // Synchronously call dispose inside applicationStopping notification
+      void appRef.dispose();
+    });
+
+    await app.start();
+    await app.stop();
+    await app.dispose();
+
+    assert.equal(stopCallCount, 1, 'stop() should only execute once');
+    assert.equal(disposeCallCount, 1, 'dispose() should only execute once');
+    assert.equal(app.currentState, 'stopped');
+  });
+
+  it('M-20: factory failure during buildAsync() awaits async disposal in correct reverse order', async () => {
+    const builder = AppHost.createBuilder();
+    const order: string[] = [];
+
+    const MySingleton = Symbol('MySingleton');
+    builder.services.addSingleton(MySingleton as any, () => ({
+      name: 'singleton',
+      async dispose() {
+        await new Promise((r) => setTimeout(r, 20));
+        order.push('singleton-disposed');
+      },
+    }));
+
+    // Service 1 resolves singleton and has async disposal
+    builder.addHostedService((sp) => {
+      sp.get(MySingleton as any);
+      return {
+        async start() {},
+        async stop() {},
+        async [Symbol.asyncDispose]() {
+          await new Promise((r) => setTimeout(r, 20));
+          order.push('service1-disposed');
+        },
+      };
+    });
+
+    // Service 2 throws during construction
+    builder.addHostedService(() => {
+      throw new Error('ASYNC_BUILD_FACTORY_SENTINEL');
+    });
+
+    await assert.rejects(
+      () => builder.buildAsync(),
+      (err: any) => err.message === 'ASYNC_BUILD_FACTORY_SENTINEL',
+    );
+
+    // Service 1 must dispose before singleton
+    assert.deepEqual(order, ['service1-disposed', 'singleton-disposed']);
+  });
 });

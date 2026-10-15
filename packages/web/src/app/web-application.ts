@@ -102,6 +102,10 @@ export class WebApplicationBuilder {
 
     return new WebApplication(this.builder, router, pipeline, this.serverOptions);
   }
+
+  public async buildAsync(options?: ServiceProviderOptions): Promise<WebApplication> {
+    return this.build(options);
+  }
 }
 
 export class WebApplication {
@@ -112,6 +116,7 @@ export class WebApplication {
   private effectiveServerOptions?: HttpServerOptions;
   private appHost?: IHost;
   private serverHostedService?: HttpServerHostedService;
+  private initPromise?: Promise<void>;
 
   constructor(
     hostBuilder: HostApplicationBuilder,
@@ -271,8 +276,8 @@ export class WebApplication {
     return builder;
   }
 
-  private initHost(): void {
-    if (this.appHost) return;
+  private setupHost(): void {
+    if (this.serverHostedService) return;
 
     // Finalize endpoint registry deterministically before server starts listening:
     // - Validates endpoint name uniqueness (fails fast if duplicate names exist)
@@ -396,28 +401,62 @@ export class WebApplication {
     this.serverHostedService = service;
 
     this.hostBuilder.services.addHostedService(() => service);
+  }
 
-    this.appHost = this.hostBuilder.build();
-    service.setRootServices(this.appHost.services);
+  private initHost(): Promise<void> {
+    if (this.appHost) return Promise.resolve();
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+
+    const promise = (async () => {
+      this.setupHost();
+      this.appHost = await this.hostBuilder.buildAsync();
+      this.serverHostedService!.setRootServices(this.appHost.services);
+    })();
+
+    this.initPromise = promise;
+
+    promise.catch(() => {
+      if (this.initPromise === promise) {
+        this.initPromise = undefined;
+      }
+    });
+
+    return promise;
   }
 
   public async start(): Promise<void> {
-    this.initHost();
+    await this.initHost();
     await this.appHost!.start();
   }
 
   public async stop(cancellationToken?: AbortSignal): Promise<void> {
+    if (this.initPromise) {
+      try {
+        await this.initPromise;
+      } catch {
+        return;
+      }
+    }
     if (this.appHost) {
       await this.appHost.stop(cancellationToken);
     }
   }
 
   public async run(): Promise<void> {
-    this.initHost();
+    await this.initHost();
     await this.appHost!.run();
   }
 
   public async dispose(): Promise<void> {
+    if (this.initPromise) {
+      try {
+        await this.initPromise;
+      } catch {
+        return;
+      }
+    }
     if (this.appHost) {
       await this.appHost.dispose();
     }

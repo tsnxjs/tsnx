@@ -1,6 +1,6 @@
 {
   "name": "@tsnx/cli",
-  "version": "0.4.1",
+  "version": "1.0.0-rc.1",
   "description": "TSNX CLI - Developer interface for TypeScript projects and workspaces",
   "license": "MIT",
   "type": "module",
@@ -19,7 +19,9 @@
     "dist",
     "!dist/__tests__",
     "!dist/**/*.tsbuildinfo",
-    "README.md"
+    "!dist/**/*.map",
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=18.0.0"
@@ -37,5 +39,12 @@
     "@tsnx/build": "workspace:*",
     "@tsnx/core": "workspace:*",
     "yaml": "^2.9.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tsnx/tsnx.git",
+    "directory": "apps/cli"
+  },
+  "bugs": "https://github.com/tsnx/tsnx/issues",
+  "homepage": "https://github.com/tsnx/tsnx#readme"
 }
