@@ -2,16 +2,65 @@ import { TestHttpResponse } from './test-http-response.js';
 
 export type HeadersInit = Headers | Record<string, string> | [string, string][];
 
+export interface WebApplicationFactoryClientOptions {
+  baseAddress?: string;
+  defaultRequestHeaders?: HeadersInit;
+  allowAutoRedirect?: boolean;
+}
+
 export interface TestRequestOptions extends Omit<RequestInit, 'body' | 'headers'> {
   body?: any;
   headers?: HeadersInit;
 }
 
 /**
- * HTTP client bound to the ephemeral test host address.
+ * HTTP client bound to the ephemeral test host address, modeled after ASP.NET Core's HttpClient in WebApplicationFactory.
  */
 export class TestHttpClient {
-  constructor(public readonly baseAddress: string) {}
+  public readonly defaultRequestHeaders: Headers;
+  public readonly baseAddress: string;
+
+  constructor(
+    baseAddress: string,
+    options: WebApplicationFactoryClientOptions = {},
+  ) {
+    this.baseAddress = options.baseAddress ?? baseAddress;
+    this.defaultRequestHeaders = new Headers(options.defaultRequestHeaders as any);
+  }
+
+  /**
+   * Set a default header value applied to all requests (similar to DefaultRequestHeaders.Add).
+   */
+  public setDefaultHeader(name: string, value: string): this {
+    this.defaultRequestHeaders.set(name, value);
+    return this;
+  }
+
+  /**
+   * Set an Authorization: Bearer <token> default header (similar to DefaultRequestHeaders.Authorization).
+   */
+  public setBearerToken(token: string): this {
+    this.defaultRequestHeaders.set('Authorization', `Bearer ${token}`);
+    return this;
+  }
+
+  /**
+   * Set an API Key default header (defaults to X-API-Key).
+   */
+  public setApiKey(key: string, headerName = 'X-API-Key'): this {
+    this.defaultRequestHeaders.set(headerName, key);
+    return this;
+  }
+
+  /**
+   * Clear all default headers.
+   */
+  public clearDefaultHeaders(): this {
+    for (const name of Array.from(this.defaultRequestHeaders.keys())) {
+      this.defaultRequestHeaders.delete(name);
+    }
+    return this;
+  }
 
   /**
    * Resolve an endpoint relative path or URL against the baseAddress.
@@ -26,14 +75,27 @@ export class TestHttpClient {
   }
 
   /**
-   * Execute an arbitrary fetch request with relative path resolution and automatic JSON formatting.
+   * Execute an arbitrary fetch request with relative path resolution, default headers, and automatic JSON formatting.
    */
   public async fetch(input: string | URL | Request, init?: RequestInit): Promise<TestHttpResponse> {
     let targetUrl: string | URL | Request = input;
     if (typeof input === 'string') {
       targetUrl = this.resolveUrl(input);
     }
-    const response = await globalThis.fetch(targetUrl, init);
+
+    // Merge defaultRequestHeaders with request-specific headers
+    const mergedHeaders = new Headers(this.defaultRequestHeaders);
+    if (init?.headers) {
+      const custom = new Headers(init.headers as any);
+      custom.forEach((value, key) => {
+        mergedHeaders.set(key, value);
+      });
+    }
+
+    const response = await globalThis.fetch(targetUrl, {
+      ...init,
+      headers: mergedHeaders,
+    });
     return new TestHttpResponse(response);
   }
 

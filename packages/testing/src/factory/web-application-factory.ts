@@ -2,19 +2,31 @@ import {
   IServiceProviderRoot,
   IServiceProviderScope,
   IConfiguration,
+  LoggerFactory,
+  LogLevel,
+  MemoryConfigurationProvider,
 } from '@tsnx/hosting';
 import { WebApplication, WebApplicationBuilder, HttpServerOptions } from '@tsnx/web';
-import { TestHttpClient } from '../client/test-http-client.js';
-import { AppFactory, ConfigureServicesCallback, WebApplicationFactoryOptions } from './types.js';
+import { TestHttpClient, WebApplicationFactoryClientOptions } from '../client/test-http-client.js';
+import {
+  AppFactory,
+  ConfigureServicesCallback,
+  ConfigureConfigurationCallback,
+  ConfigureLoggingCallback,
+  IWebHostBuilder,
+  WebApplicationFactoryOptions,
+} from './types.js';
 
 /**
  * Test host for integration testing TSNX Web Applications with ephemeral ports,
  * deterministic disposal, and dependency injection service overrides.
+ * Modeled closely after ASP.NET Core's WebApplicationFactory.
  */
-export class WebApplicationFactory {
+export class WebApplicationFactory implements IWebHostBuilder {
   private readonly serviceOverrides: ConfigureServicesCallback[] = [];
+  private readonly configOverrides: ConfigureConfigurationCallback[] = [];
+  private readonly loggingOverrides: ConfigureLoggingCallback[] = [];
   private instance?: WebApplication;
-  private client?: TestHttpClient;
   private isDisposed = false;
   private startPromise?: Promise<void>;
 
@@ -24,6 +36,17 @@ export class WebApplicationFactory {
   ) {}
 
   /**
+   * Configure the host builder using a lambda (ASP.NET Core WithWebHostBuilder style).
+   */
+  public withWebHostBuilder(configure: (builder: IWebHostBuilder) => void): this {
+    if (this.instance) {
+      throw new Error('Cannot configure web host builder after the test host has already started.');
+    }
+    configure(this);
+    return this;
+  }
+
+  /**
    * Configure and override services in the dependency injection container before the application starts.
    */
   public configureServices(callback: ConfigureServicesCallback): this {
@@ -31,6 +54,46 @@ export class WebApplicationFactory {
       throw new Error('Cannot configure services after the test host has already started.');
     }
     this.serviceOverrides.push(callback);
+    return this;
+  }
+
+  /**
+   * Configure application configuration providers before the application starts (ASP.NET Core ConfigureAppConfiguration).
+   */
+  public configureAppConfiguration(callback: ConfigureConfigurationCallback): this {
+    if (this.instance) {
+      throw new Error('Cannot configure application configuration after the test host has already started.');
+    }
+    this.configOverrides.push(callback);
+    return this;
+  }
+
+  /**
+   * Set an In-Memory configuration key/value pair (ASP.NET Core AddInMemoryCollection shortcut).
+   */
+  public withSetting(key: string, value: any): this {
+    return this.configureAppConfiguration((config) => {
+      config.addProvider(new MemoryConfigurationProvider({ [key]: value }));
+    });
+  }
+
+  /**
+   * Set multiple In-Memory configuration key/value pairs.
+   */
+  public withSettings(settings: Record<string, any>): this {
+    return this.configureAppConfiguration((config) => {
+      config.addProvider(new MemoryConfigurationProvider(settings));
+    });
+  }
+
+  /**
+   * Configure the logging factory before the application starts (ASP.NET Core ConfigureLogging).
+   */
+  public configureLogging(callback: ConfigureLoggingCallback): this {
+    if (this.instance) {
+      throw new Error('Cannot configure logging after the test host has already started.');
+    }
+    this.loggingOverrides.push(callback);
     return this;
   }
 
@@ -73,6 +136,13 @@ export class WebApplicationFactory {
   }
 
   /**
+   * Application logging factory.
+   */
+  public get logging(): LoggerFactory {
+    return this.app.logging;
+  }
+
+  /**
    * Base address for HTTP requests (e.g. "http://127.0.0.1:45321").
    */
   public get baseAddress(): string {
@@ -86,13 +156,19 @@ export class WebApplicationFactory {
 
   /**
    * Start the test server and return an HTTP client bound to the ephemeral address.
+   * Modeled after ASP.NET Core's CreateClient(WebApplicationFactoryClientOptions).
    */
-  public async createClient(): Promise<TestHttpClient> {
+  public async createClient(options?: WebApplicationFactoryClientOptions): Promise<TestHttpClient> {
     await this.start();
-    if (!this.client) {
-      this.client = new TestHttpClient(this.baseAddress);
-    }
-    return this.client;
+    const mergedOptions: WebApplicationFactoryClientOptions = {
+      ...(this.options.clientOptions ?? {}),
+      ...(options ?? {}),
+      defaultRequestHeaders: {
+        ...(this.options.clientOptions?.defaultRequestHeaders as any),
+        ...(options?.defaultRequestHeaders as any),
+      },
+    };
+    return new TestHttpClient(this.baseAddress, mergedOptions);
   }
 
   /**
@@ -123,10 +199,27 @@ export class WebApplicationFactory {
       const extraServerOptions = this.options.serverOptions ?? {};
 
       if (result instanceof WebApplicationBuilder) {
-        // Apply service overrides
+        // Logging configuration & silencing
+        if (this.options.silent) {
+          result.logging.setMinimumLevel(LogLevel.Warning);
+        }
+        if (this.options.logLevel !== undefined) {
+          result.logging.setMinimumLevel(this.options.logLevel);
+        }
+        for (const loggingCallback of this.loggingOverrides) {
+          result.configureLogging(loggingCallback);
+        }
+
+        // Configuration overrides
+        for (const configCallback of this.configOverrides) {
+          result.configureAppConfiguration(configCallback);
+        }
+
+        // Service overrides
         for (const override of this.serviceOverrides) {
           result.configureServices(override);
         }
+
         // Configure test server options
         result.configureServer({
           host,
@@ -137,6 +230,23 @@ export class WebApplicationFactory {
         this.instance = result.build();
       } else if (result instanceof WebApplication) {
         this.instance = result;
+
+        // Logging configuration & silencing
+        if (this.options.silent) {
+          this.instance.logging.setMinimumLevel(LogLevel.Warning);
+        }
+        if (this.options.logLevel !== undefined) {
+          this.instance.logging.setMinimumLevel(this.options.logLevel);
+        }
+        for (const loggingCallback of this.loggingOverrides) {
+          this.instance.configureLogging(loggingCallback);
+        }
+
+        // Configuration overrides
+        for (const configCallback of this.configOverrides) {
+          this.instance.configureAppConfiguration(configCallback);
+        }
+
         // Configure test server options
         this.instance.configureServer({
           host,
@@ -144,6 +254,7 @@ export class WebApplicationFactory {
           ...extraServerOptions,
         });
         this.instance.hostOptions.registerSignalHandlers = registerSignalHandlers;
+
         // Apply service overrides
         for (const override of this.serviceOverrides) {
           this.instance.configureServices(override);
@@ -188,7 +299,6 @@ export class WebApplicationFactory {
       await this.instance.dispose();
       this.instance = undefined;
     }
-    this.client = undefined;
   }
 
   /**

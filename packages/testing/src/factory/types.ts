@@ -1,11 +1,26 @@
-import { ServiceCollection } from '@tsnx/hosting';
+import { ServiceCollection, LoggerFactory, LogLevel, IConfiguration } from '@tsnx/hosting';
 import { WebApplication, WebApplicationBuilder, HttpServerOptions } from '@tsnx/web';
+import { WebApplicationFactoryClientOptions } from '../client/test-http-client.js';
 
 export type AppFactoryResult = WebApplication | WebApplicationBuilder;
 
 export type AppFactory = () => AppFactoryResult | Promise<AppFactoryResult>;
 
 export type ConfigureServicesCallback = (services: ServiceCollection) => void;
+export type ConfigureConfigurationCallback = (config: IConfiguration) => void;
+export type ConfigureLoggingCallback = (logging: LoggerFactory) => void;
+
+/**
+ * Interface representing the host builder configuration in ASP.NET Core style.
+ */
+export interface IWebHostBuilder {
+  configureServices(callback: ConfigureServicesCallback): this;
+  configureAppConfiguration(callback: ConfigureConfigurationCallback): this;
+  withSetting(key: string, value: any): this;
+  withSettings(settings: Record<string, any>): this;
+  configureLogging(callback: ConfigureLoggingCallback): this;
+  configureServer(options: HttpServerOptions): this;
+}
 
 export interface WebApplicationFactoryOptions {
   /**
@@ -24,7 +39,23 @@ export interface WebApplicationFactoryOptions {
   registerSignalHandlers?: boolean;
 
   /**
+   * Suppress informational server logging (HTTP Server listening/stopping logs) for clean test runs.
+   * Defaults to false.
+   */
+  silent?: boolean;
+
+  /**
+   * Explicit minimum log level for the test host.
+   */
+  logLevel?: LogLevel;
+
+  /**
    * Additional HTTP server options.
    */
   serverOptions?: HttpServerOptions;
+
+  /**
+   * Default client options applied when calling createClient().
+   */
+  clientOptions?: WebApplicationFactoryClientOptions;
 }

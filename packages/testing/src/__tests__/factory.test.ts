@@ -70,12 +70,29 @@ function createWarehouseApp() {
     return Results.noContent();
   });
 
+  // Headers / Auth test endpoint
+  app.mapGet('/auth-test', (ctx) => {
+    return Results.json({
+      authorization: ctx.request.headers['authorization'],
+      tenantId: ctx.request.headers['x-tenant-id'],
+      apiKey: ctx.request.headers['x-api-key'],
+    });
+  });
+
+  // Config test endpoint
+  app.mapGet('/config-test', () => {
+    return Results.json({
+      paymentUrl: app.configuration.get('Services:PaymentUrl', 'http://default-payment'),
+      betaMode: app.configuration.get('Features:BetaMode', false),
+    });
+  });
+
   return app;
 }
 
 describe('@tsnx/testing WebApplicationFactory', () => {
-  it('starts test host on ephemeral port and tests HTTP endpoints', async () => {
-    const factory = new WebApplicationFactory(createWarehouseApp);
+  it('starts test host on ephemeral port and tests HTTP endpoints with silent logging', async () => {
+    const factory = new WebApplicationFactory(createWarehouseApp, { silent: true });
 
     try {
       const client = await factory.createClient();
@@ -98,7 +115,7 @@ describe('@tsnx/testing WebApplicationFactory', () => {
   });
 
   it('overrides DI services seamlessly with configureServices and services.replace', async () => {
-    const factory = new WebApplicationFactory(createWarehouseApp).configureServices((services) => {
+    const factory = new WebApplicationFactory(createWarehouseApp, { silent: true }).configureServices((services) => {
       // Replace the real repo with the fake test repository
       services.replace(WAREHOUSE_REPO, new FakeWarehouseRepository('TestDouble'));
     });
@@ -115,8 +132,70 @@ describe('@tsnx/testing WebApplicationFactory', () => {
     }
   });
 
+  it('supports ASP.NET Core style withWebHostBuilder to configure services, config, and logging', async () => {
+    const factory = new WebApplicationFactory(createWarehouseApp, { silent: true }).withWebHostBuilder((builder) => {
+      builder
+        .configureServices((services) => {
+          services.replace(WAREHOUSE_REPO, new FakeWarehouseRepository('AspAdapted'));
+        })
+        .withSetting('Services:PaymentUrl', 'http://mock-payment-gateway:9090')
+        .withSetting('Features:BetaMode', true);
+    });
+
+    try {
+      const client = await factory.createClient();
+
+      // Test DI override via withWebHostBuilder
+      const repoRes = await client.get('/warehouses/777');
+      assert.equal(repoRes.status, 200);
+      assert.equal((await repoRes.json()).name, 'AspAdapted Warehouse 777');
+
+      // Test Configuration override via withWebHostBuilder
+      const configRes = await client.get('/config-test');
+      assert.equal(configRes.status, 200);
+      const configData = await configRes.json();
+      assert.equal(configData.paymentUrl, 'http://mock-payment-gateway:9090');
+      assert.equal(configData.betaMode, true);
+    } finally {
+      await factory.dispose();
+    }
+  });
+
+  it('supports defaultRequestHeaders, setBearerToken, and setApiKey on TestHttpClient', async () => {
+    const factory = new WebApplicationFactory(createWarehouseApp, { silent: true });
+
+    try {
+      const client = await factory.createClient({
+        defaultRequestHeaders: {
+          'X-Tenant-Id': 'tenant-acme',
+        },
+      });
+
+      // Fluent auth helper methods ala ASP.NET Core DefaultRequestHeaders
+      client.setBearerToken('my-super-secret-jwt');
+      client.setApiKey('test-key-xyz');
+
+      const res = await client.get('/auth-test');
+      assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.equal(data.authorization, 'Bearer my-super-secret-jwt');
+      assert.equal(data.tenantId, 'tenant-acme');
+      assert.equal(data.apiKey, 'test-key-xyz');
+
+      // Request-specific override takes precedence
+      const overrideRes = await client.get('/auth-test', {
+        headers: {
+          'X-Tenant-Id': 'override-tenant',
+        },
+      });
+      assert.equal((await overrideRes.json()).tenantId, 'override-tenant');
+    } finally {
+      await factory.dispose();
+    }
+  });
+
   it('supports POST, PUT, DELETE, and problemDetails validation responses', async () => {
-    const factory = new WebApplicationFactory(createWarehouseApp);
+    const factory = new WebApplicationFactory(createWarehouseApp, { silent: true });
 
     try {
       const client = await factory.createClient();
@@ -151,7 +230,7 @@ describe('@tsnx/testing WebApplicationFactory', () => {
   });
 
   it('creates isolated service scopes for direct integration inspection', async () => {
-    const factory = new WebApplicationFactory(createWarehouseApp).configureServices((services) => {
+    const factory = new WebApplicationFactory(createWarehouseApp, { silent: true }).configureServices((services) => {
       services.replace(WAREHOUSE_REPO, new FakeWarehouseRepository('ScopedInspect'));
     });
 
@@ -172,7 +251,7 @@ describe('@tsnx/testing WebApplicationFactory', () => {
     let baseAddress = '';
 
     {
-      const factory = new WebApplicationFactory(createWarehouseApp);
+      const factory = new WebApplicationFactory(createWarehouseApp, { silent: true });
       await factory.start();
       baseAddress = factory.baseAddress;
       assert.ok(baseAddress.startsWith('http://127.0.0.1:'));
