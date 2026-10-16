@@ -1,0 +1,197 @@
+import { describe, it } from 'node:test';
+import * as assert from 'node:assert/strict';
+import { createToken } from '@tsnx/hosting';
+import { WebApplication, Results, body, type Infer } from '@tsnx/web';
+import { WebApplicationFactory } from '../index.js';
+
+interface IWarehouseRepository {
+  getById(id: string): { id: string; name: string };
+  create(name: string): { id: string; name: string };
+}
+
+const WAREHOUSE_REPO = createToken<IWarehouseRepository>('WarehouseRepository');
+
+class RealWarehouseRepository implements IWarehouseRepository {
+  getById(id: string) {
+    return { id, name: 'Real Production Warehouse' };
+  }
+  create(name: string) {
+    return { id: 'real-1', name };
+  }
+}
+
+class FakeWarehouseRepository implements IWarehouseRepository {
+  constructor(private readonly prefix: string = 'Mock') {}
+  getById(id: string) {
+    return { id, name: `${this.prefix} Warehouse ${id}` };
+  }
+  create(name: string) {
+    return { id: 'mock-1', name: `${this.prefix} ${name}` };
+  }
+}
+
+const CreateItemSchema = { name: String, qty: Number };
+type CreateItem = Infer<typeof CreateItemSchema>;
+
+function createWarehouseApp() {
+  const builder = WebApplication.createBuilder();
+
+  // Register production services by default
+  builder.services.addSingleton(WAREHOUSE_REPO, new RealWarehouseRepository());
+
+  const app = builder.build();
+
+  // Endpoints
+  app.mapGet('/health', () => {
+    return Results.ok({ status: 'healthy', timestamp: Date.now() });
+  });
+
+  app.mapGet('/warehouses/:id', (ctx) => {
+    const id = ctx.request.params.id;
+    const repo = ctx.requestServices.get(WAREHOUSE_REPO);
+    return Results.json(repo.getById(id));
+  });
+
+  app.mapPost('/warehouses', [body(CreateItemSchema)], (data: CreateItem) => {
+    if (!data.name || data.qty <= 0) {
+      return Results.validationProblem({
+        name: !data.name ? ['Name is required'] : [],
+        qty: data.qty <= 0 ? ['Quantity must be greater than zero'] : [],
+      });
+    }
+    return Results.created({ id: 'created-1', name: data.name });
+  });
+
+  app.mapPut('/warehouses/:id', (ctx) => {
+    return Results.json({ id: ctx.request.params.id, updated: true });
+  });
+
+  app.mapDelete('/warehouses/:id', () => {
+    return Results.noContent();
+  });
+
+  return app;
+}
+
+describe('@tsnx/testing WebApplicationFactory', () => {
+  it('starts test host on ephemeral port and tests HTTP endpoints', async () => {
+    const factory = new WebApplicationFactory(createWarehouseApp);
+
+    try {
+      const client = await factory.createClient();
+
+      // 1. GET /health
+      const healthRes = await client.get('/health');
+      assert.equal(healthRes.status, 200);
+      assert.equal(healthRes.ok, true);
+      const healthData = await healthRes.json();
+      assert.equal(healthData.status, 'healthy');
+
+      // 2. Production repo by default
+      const realRes = await client.get('/warehouses/42');
+      assert.equal(realRes.status, 200);
+      const realData = await realRes.json();
+      assert.equal(realData.name, 'Real Production Warehouse');
+    } finally {
+      await factory.dispose();
+    }
+  });
+
+  it('overrides DI services seamlessly with configureServices and services.replace', async () => {
+    const factory = new WebApplicationFactory(createWarehouseApp).configureServices((services) => {
+      // Replace the real repo with the fake test repository
+      services.replace(WAREHOUSE_REPO, new FakeWarehouseRepository('TestDouble'));
+    });
+
+    try {
+      const client = await factory.createClient();
+
+      const res = await client.get('/warehouses/999');
+      assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.equal(data.name, 'TestDouble Warehouse 999');
+    } finally {
+      await factory.dispose();
+    }
+  });
+
+  it('supports POST, PUT, DELETE, and problemDetails validation responses', async () => {
+    const factory = new WebApplicationFactory(createWarehouseApp);
+
+    try {
+      const client = await factory.createClient();
+
+      // 1. POST valid item
+      const createRes = await client.post('/warehouses', { name: 'Electronics', qty: 10 });
+      assert.equal(createRes.status, 201);
+      const created = await createRes.json();
+      assert.equal(created.name, 'Electronics');
+
+      // 2. POST invalid item -> Problem Details 400
+      const invalidRes = await client.post('/warehouses', { name: '', qty: -1 });
+      assert.equal(invalidRes.status, 400);
+      const problem = await invalidRes.problemDetails();
+      assert.equal(problem.status, 400);
+      assert.ok(problem.errors);
+      const errors = problem.errors as Record<string, string[]>;
+      assert.deepEqual(errors['name'], ['Name is required']);
+      assert.deepEqual(errors['qty'], ['Quantity must be greater than zero']);
+
+      // 3. PUT request
+      const putRes = await client.put('/warehouses/55');
+      assert.equal(putRes.status, 200);
+      assert.equal((await putRes.json()).updated, true);
+
+      // 4. DELETE request
+      const delRes = await client.delete('/warehouses/55');
+      assert.equal(delRes.status, 204);
+    } finally {
+      await factory.dispose();
+    }
+  });
+
+  it('creates isolated service scopes for direct integration inspection', async () => {
+    const factory = new WebApplicationFactory(createWarehouseApp).configureServices((services) => {
+      services.replace(WAREHOUSE_REPO, new FakeWarehouseRepository('ScopedInspect'));
+    });
+
+    try {
+      await factory.start();
+
+      // Create isolated scope to check service state
+      const scope = factory.createScope();
+      const repo = scope.get(WAREHOUSE_REPO);
+      assert.equal(repo.getById('1').name, 'ScopedInspect Warehouse 1');
+      await scope.dispose();
+    } finally {
+      await factory.dispose();
+    }
+  });
+
+  it('supports deterministic disposal via Symbol.asyncDispose', async () => {
+    let baseAddress = '';
+
+    {
+      const factory = new WebApplicationFactory(createWarehouseApp);
+      await factory.start();
+      baseAddress = factory.baseAddress;
+      assert.ok(baseAddress.startsWith('http://127.0.0.1:'));
+
+      // Call endpoint
+      const client = await factory.createClient();
+      const res = await client.get('/health');
+      assert.equal(res.status, 200);
+
+      // Trigger async dispose
+      await factory[Symbol.asyncDispose]();
+    }
+
+    // Verify server has stopped and connections are drained
+    try {
+      await fetch(`${baseAddress}/health`);
+      assert.fail('Server should be closed after disposal');
+    } catch (err: any) {
+      assert.ok(err.code === 'ECONNREFUSED' || err.message?.includes('fetch failed'));
+    }
+  });
+});

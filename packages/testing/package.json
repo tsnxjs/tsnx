@@ -1,0 +1,48 @@
+{
+  "name": "@tsnx/testing",
+  "version": "1.0.0-rc.1",
+  "description": "Integration testing utilities and WebApplicationFactory for TSNX",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/__tests__",
+    "!dist/**/*.tsbuildinfo",
+    "!dist/**/*.map",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "typecheck": "tsc -b --noEmit",
+    "test": "node ../../scripts/test-runner.js"
+  },
+  "dependencies": {
+    "@tsnx/hosting": "workspace:*",
+    "@tsnx/hosting-abstractions": "workspace:*",
+    "@tsnx/web": "workspace:*",
+    "@types/node": "^22.13.9"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tsnxjs/tsnx.git",
+    "directory": "packages/testing"
+  },
+  "bugs": "https://github.com/tsnxjs/tsnx/issues",
+  "homepage": "https://github.com/tsnxjs/tsnx#readme"
+}

@@ -93,6 +93,7 @@ await app.run();
 | [`@tsnx/core`](./packages/core) | `1.0.0-rc.1` | Native TypeScript project discovery, workspace graph, and manifest parsing |
 | [`@tsnx/build`](./packages/build) | `1.0.0-rc.1` | TypeScript compiler orchestrator, configuration generator, and package synchronization |
 | [`@tsnx/cli`](./apps/cli) | `1.0.0-rc.2` | Unified developer CLI (`tsnx create`, `build`, `run`, `test`, `watch`, `ref`, `workspace`) |
+| [`@tsnx/testing`](./packages/testing) | `1.0.0-rc.1` | Integration testing utilities, `WebApplicationFactory`, and HTTP test client |
 
 ---
 

@@ -69,6 +69,11 @@ export class WebApplicationBuilder {
     return this;
   }
 
+  public configureServices(configure: (services: ServiceCollection) => void): this {
+    configure(this.services);
+    return this;
+  }
+
   public configureServer(options: HttpServerOptions): this {
     Object.assign(this.serverOptions, options);
     return this;
@@ -143,6 +148,26 @@ export class WebApplication {
 
   public get serverOptions(): Readonly<HttpServerOptions> {
     return this.effectiveServerOptions ?? this.initialServerOptions;
+  }
+
+  public get hostOptions(): HostOptions {
+    return this.hostBuilder.options;
+  }
+
+  public configureServices(configure: (services: ServiceCollection) => void): this {
+    if (this.appHost) {
+      throw new Error('Cannot configure services after the application has started.');
+    }
+    configure(this.hostBuilder.services);
+    return this;
+  }
+
+  public configureServer(options: HttpServerOptions): this {
+    if (this.appHost) {
+      throw new Error('Cannot configure server options after the application has started.');
+    }
+    Object.assign(this.initialServerOptions, options);
+    return this;
   }
 
   public get listeningPort(): number | undefined {

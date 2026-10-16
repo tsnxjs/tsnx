@@ -238,6 +238,25 @@ export class ServiceCollection implements IServiceCollection {
     return false;
   }
 
+  replace<T>(token: InjectionToken<T> | string, instance: T): this;
+  replace<T>(token: InjectionToken<T> | string, factory: (provider: IServiceProvider) => T): this;
+  replace<T>(token: InjectionToken<T>): IBindingBuilder<T>;
+  replace<T>(
+    token: InjectionToken<T> | string,
+    factoryOrInstance?: T | ServiceFactory<T>,
+  ): IBindingBuilder<T> | this {
+    // Remove previous descriptors for token
+    for (let i = this.descriptors.length - 1; i >= 0; i--) {
+      if (this.descriptors[i].token === token) {
+        this.descriptors.splice(i, 1);
+      }
+    }
+    if (factoryOrInstance === undefined) {
+      return new BindingBuilder<T>(this, token as InjectionToken<T>, 'singleton');
+    }
+    return this.addSingleton(token as any, factoryOrInstance as any);
+  }
+
   find(token: ServiceIdentifier): ServiceDescriptor | undefined {
     // Return last registered descriptor for this token (overriding earlier ones)
     for (let i = this.descriptors.length - 1; i >= 0; i--) {

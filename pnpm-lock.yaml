@@ -297,6 +297,21 @@ importers:
         specifier: ^22.13.9
         version: 22.20.5
 
+  packages/testing:
+    dependencies:
+      '@tsnx/hosting':
+        specifier: workspace:*
+        version: link:../hosting
+      '@tsnx/hosting-abstractions':
+        specifier: workspace:*
+        version: link:../hosting-abstractions
+      '@tsnx/web':
+        specifier: workspace:*
+        version: link:../web
+      '@types/node':
+        specifier: ^22.13.9
+        version: 22.20.5
+
   packages/vscode-extension:
     dependencies:
       '@tsnx/build':

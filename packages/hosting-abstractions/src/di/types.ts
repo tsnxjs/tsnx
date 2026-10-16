@@ -127,7 +127,10 @@ export interface IServiceCollection extends Iterable<ServiceDescriptor> {
   tryAddScoped<T>(token: InjectionToken<T>, factory: (provider: IServiceProvider) => T): boolean;
   tryAddScoped<T>(token: string, factory: (provider: IServiceProvider) => T): boolean;
   tryAddTransient<T>(token: InjectionToken<T>, factory: (provider: IServiceProvider) => T): boolean;
-  tryAddTransient<T>(token: string, factory: (provider: IServiceProvider) => T): boolean;
+  // Replace
+  replace<T>(token: InjectionToken<T> | string, instance: T): this;
+  replace<T>(token: InjectionToken<T> | string, factory: (provider: IServiceProvider) => T): this;
+  replace<T>(token: InjectionToken<T>): IBindingBuilder<T>;
 
   find(token: ServiceIdentifier): ServiceDescriptor | undefined;
   findAll(token: ServiceIdentifier): ServiceDescriptor[];

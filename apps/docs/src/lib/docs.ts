@@ -1959,9 +1959,16 @@ export const docs: Doc[] = [
     "source": "packages/web/src/__tests__/web-app.test.ts",
     "sections": [
       {
+        "id": "web-application-factory",
+        "title": "Integration testing with WebApplicationFactory",
+        "text": "Use @tsnx/testing to boot your API on an ephemeral port, mock dependencies with services.replace, and run HTTP assertions using a fluent test client with deterministic cleanup.",
+        "filename": "src/api.test.ts",
+        "code": "import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport { WebApplicationFactory } from '@tsnx/testing';\nimport { createApp, WAREHOUSE_REPO } from './app.js';\nimport { FakeWarehouseRepo } from './fakes.js';\n\ntest('GET /warehouses returns 200 with overridden repository', async () => {\n  await using factory = new WebApplicationFactory(createApp)\n    .configureServices((services) => {\n      services.replace(WAREHOUSE_REPO, new FakeWarehouseRepo());\n    });\n\n  const client = await factory.createClient();\n  const response = await client.get('/warehouses/42');\n\n  assert.equal(response.status, 200);\n  const data = await response.json();\n  assert.equal(data.id, '42');\n});"
+      },
+      {
         "id": "http-test",
-        "title": "Start a real server in a test",
-        "text": "Use port 0 so the operating system chooses an available port, then read app.listeningPort after start(). Disable process signal handlers and dispose the application in finally.",
+        "title": "Manual server bootstrap",
+        "text": "If testing without @tsnx/testing, use port 0 so the operating system chooses an available port, then read app.listeningPort after start(). Disable process signal handlers and dispose the application in finally.",
         "filename": "src/health.test.ts",
         "code": "import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport { WebApplication, Results } from '@tsnx/web';\n\ntest('GET /health returns JSON', async () => {\n  const builder = WebApplication.createBuilder();\n  builder.configureServer({ host: '127.0.0.1', port: 0 });\n  builder.hostOptions.registerSignalHandlers = false;\n  const app = builder.build();\n  app.mapGet('/health', () => Results.ok({ status: 'ok' }));\n  try {\n    await app.start();\n    const response = await fetch(`http://127.0.0.1:${app.listeningPort}/health`);\n    assert.equal(response.status, 200);\n    assert.deepEqual(await response.json(), { status: 'ok' });\n  } finally {\n    await app.dispose();\n  }\n});"
       },

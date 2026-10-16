@@ -8,6 +8,7 @@
     { "path": "./packages/web" },
     { "path": "./packages/openapi" },
     { "path": "./packages/scalar" },
+    { "path": "./packages/testing" },
     { "path": "./apps/cli" }
   ]
 }
