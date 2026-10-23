@@ -81,8 +81,14 @@ describe('@tsnx/cli openapi export command', () => {
     const distDir = path.join(tmpDir, 'dist');
     fs.mkdirSync(distDir, { recursive: true });
 
+    fs.writeFileSync(
+      path.join(tmpDir, 'package.json'),
+      JSON.stringify({ type: 'module' }),
+      'utf-8',
+    );
+
     // Link web package dist so project can import '@tsnx/web'
-    const webDistPath = path.resolve(import.meta.dirname, '../../../../packages/web/dist/index.js');
+    const webDistPath = fileURLToPath(new URL('../../../../packages/web/dist/index.js', import.meta.url));
 
     fs.writeFileSync(
       path.join(tmpDir, 'sample-api.tsproj'),

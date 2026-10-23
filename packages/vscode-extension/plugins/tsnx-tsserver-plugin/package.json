@@ -1,6 +1,7 @@
 {
   "name": "tsnx-tsserver-plugin",
   "version": "0.1.0",
+  "type": "commonjs",
   "description": "TSNX TypeScript Server Language Service Plugin",
   "main": "index.js",
   "license": "MIT"

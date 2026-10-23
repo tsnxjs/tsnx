@@ -4,6 +4,7 @@
   "description": "Official Visual Studio Code extension for TSNX (TypeScript Next) Framework",
   "version": "1.0.0-rc.1",
   "private": true,
+  "type": "module",
   "publisher": "tsnx",
   "license": "MIT",
   "repository": {
@@ -31,7 +32,7 @@
     "workspaceContains:**/tsconfig.json",
     "onLanguage:yaml"
   ],
-  "main": "./dist/extension.js",
+  "main": "./dist/extension.cjs",
   "contributes": {
     "commands": [
       {

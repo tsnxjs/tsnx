@@ -1,6 +1,6 @@
 {
   "name": "@tsnx/testing",
-  "version": "1.3.0",
+  "version": "1.3.2",
   "description": "Integration testing utilities and WebApplicationFactory for TSNX",
   "license": "MIT",
   "type": "module",
