@@ -56,16 +56,14 @@ export function mapOpenApi(
   });
 }
 
-// Attach method to WebApplication prototype for idiomatic method chaining
-if (!(WebApplication.prototype as any).mapOpenApi) {
-  (WebApplication.prototype as any).mapOpenApi = function (
-    this: WebApplication,
-    pathOrOptions?: string | OpenApiOptions,
-    maybeOptions?: OpenApiOptions,
-  ): RouteHandlerBuilder {
-    return mapOpenApi(this, pathOrOptions, maybeOptions);
-  };
-}
+// Replace the diagnostic stub from @tsnx/web with the OpenAPI implementation.
+(WebApplication.prototype as any).mapOpenApi = function (
+  this: WebApplication,
+  pathOrOptions?: string | OpenApiOptions,
+  maybeOptions?: OpenApiOptions,
+): RouteHandlerBuilder {
+  return mapOpenApi(this, pathOrOptions, maybeOptions);
+};
 
 (WebApplication.prototype as any).exportOpenApi = async function (
   this: WebApplication,
