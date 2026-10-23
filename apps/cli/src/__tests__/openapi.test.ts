@@ -6,7 +6,7 @@ import * as http from 'node:http';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const execFileAsync = promisify(execFile);
 const CLI_BIN = fileURLToPath(new URL('../index.js', import.meta.url));
@@ -89,6 +89,7 @@ describe('@tsnx/cli openapi export command', () => {
 
     // Link web package dist so project can import '@tsnx/web'
     const webDistPath = fileURLToPath(new URL('../../../../packages/web/dist/index.js', import.meta.url));
+    const webDistUrl = pathToFileURL(webDistPath).href;
 
     fs.writeFileSync(
       path.join(tmpDir, 'sample-api.tsproj'),
@@ -105,7 +106,7 @@ spec:
     fs.writeFileSync(
       path.join(distDir, 'main.js'),
       `
-import { WebApplication, Results } from '${webDistPath}';
+import { WebApplication, Results } from '${webDistUrl}';
 const builder = WebApplication.createBuilder();
 const app = builder.build();
 app.mapGet('/v1/orders', () => Results.ok([])).withName('listOrders');
