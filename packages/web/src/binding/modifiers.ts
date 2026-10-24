@@ -1,7 +1,7 @@
 import {
   ARRAY_SYMBOL, ArrayDescriptor, BindingSchema, DISCRIMINATED_UNION_SYMBOL,
   DiscriminatedUnionDescriptor, ENUM_SYMBOL, EnumDescriptor, EnumValue,
-  INTEGER_SYMBOL, ISO_DATE_SYMBOL, LITERAL_SYMBOL, LiteralDescriptor,
+  INTEGER_SYMBOL, IntegerDescriptor, ISO_DATE_SYMBOL, IsoDateDescriptor, LITERAL_SYMBOL, LiteralDescriptor,
   NULLABLE_SYMBOL, NullableDescriptor, OBJECT_SYMBOL, ObjectDescriptor, PrimitiveDescriptor,
   OPTIONAL_SYMBOL, OptionalDescriptor, RAW_JSON_SCHEMA_SYMBOL,
   RawJsonSchemaDescriptor, SchemaField, UNION_SYMBOL, UnionDescriptor,
@@ -57,10 +57,10 @@ export function passthroughObject<const S extends BindingSchema>(schema: S): Obj
   return { [OBJECT_SYMBOL]: true, schema, unknownProperties: 'passthrough' };
 }
 
-export function integer(): { readonly [INTEGER_SYMBOL]: true } {
+export function integer(): IntegerDescriptor {
   return { [INTEGER_SYMBOL]: true };
 }
-export function isoDate(): { readonly [ISO_DATE_SYMBOL]: true } {
+export function isoDate(): IsoDateDescriptor {
   return { [ISO_DATE_SYMBOL]: true };
 }
 
@@ -100,10 +100,10 @@ export function isObjectDescriptor(field: any): field is ObjectDescriptor {
 export function isDiscriminatedUnionDescriptor(field: any): field is DiscriminatedUnionDescriptor {
   return Boolean(field && typeof field === 'object' && field[DISCRIMINATED_UNION_SYMBOL] === true);
 }
-export function isIntegerDescriptor(field: any): field is ReturnType<typeof integer> {
+export function isIntegerDescriptor(field: any): field is IntegerDescriptor {
   return Boolean(field && typeof field === 'object' && field[INTEGER_SYMBOL] === true);
 }
-export function isIsoDateDescriptor(field: any): field is ReturnType<typeof isoDate> {
+export function isIsoDateDescriptor(field: any): field is IsoDateDescriptor {
   return Boolean(field && typeof field === 'object' && field[ISO_DATE_SYMBOL] === true);
 }
 export function isRawJsonSchemaDescriptor(field: any): field is RawJsonSchemaDescriptor {
