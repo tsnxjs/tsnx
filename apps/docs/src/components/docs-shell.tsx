@@ -7,10 +7,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ThemeProvider, useTheme } from "next-themes";
 import { Command } from "cmdk";
-import { ArrowDown, ArrowRight, ArrowUp, Box, Command as CommandIcon, ExternalLink, FileText, Github, Menu, Moon, Search, Sun, Terminal } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, Box, ChevronDown, Command as CommandIcon, ExternalLink, FileText, Github, Menu, Moon, Search, Sun, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { docHref, docs, groups, repository, version } from "@/lib/docs";
+import { docs, repository, version, type Doc } from "@/lib/docs";
+import { docs as stableDocs, version as stableVersion } from "@/lib/docs-v1.3.2";
 import { cn } from "@/lib/utils";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -42,7 +43,7 @@ function ThemeToggle() {
   return <Button variant="ghost" size="icon" aria-label="Toggle color theme" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}><Sun className="dark:hidden" /><Moon className="hidden dark:block" /></Button>;
 }
 
-function SearchDocs() {
+function SearchDocs({ pageDocs, basePath }: { pageDocs: Doc[]; basePath: string }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   useEffect(() => {
@@ -63,7 +64,7 @@ function SearchDocs() {
         <div className="flex items-center gap-3 border-b px-5 pr-12"><Search className="size-4 text-muted-foreground" /><Command.Input autoFocus placeholder="What are you looking for?" className="h-16 w-full bg-transparent text-sm outline-none" /></div>
         <Command.List className="max-h-[55vh] overflow-y-auto p-2">
           <Command.Empty className="px-4 py-12 text-center text-sm text-muted-foreground">No results found. Try “routing” or “services”.</Command.Empty>
-          {groups.map((group) => <Command.Group heading={group} key={group} className="search-group">{docs.filter((doc) => doc.group === group).map((doc) => <Command.Item key={doc.slug} value={`${doc.title} ${doc.description} ${doc.sections.map((s) => `${s.title} ${s.text} ${s.paragraphs?.join(" ") ?? ""} ${s.table?.rows.flat().join(" ") ?? ""}`).join(" ")}`} onSelect={() => { setOpen(false); router.push(docHref(doc.slug)); }} className="search-result"><FileText size={15} /><span>{doc.title}<small>{doc.description}</small></span><ArrowRight size={14} /></Command.Item>)}</Command.Group>)}
+          {[...new Set(pageDocs.map((doc) => doc.group))].map((group) => <Command.Group heading={group} key={group} className="search-group">{pageDocs.filter((doc) => doc.group === group).map((doc) => <Command.Item key={doc.slug} value={`${doc.title} ${doc.description} ${doc.sections.map((s) => `${s.title} ${s.text} ${s.paragraphs?.join(" ") ?? ""} ${s.table?.rows.flat().join(" ") ?? ""}`).join(" ")}`} onSelect={() => { setOpen(false); router.push(`${basePath}/${doc.slug}`); }} className="search-result"><FileText size={15} /><span>{doc.title}<small>{doc.description}</small></span><ArrowRight size={14} /></Command.Item>)}</Command.Group>)}
         </Command.List>
         <div className="flex items-center gap-4 border-t px-5 py-3 text-[11px] text-muted-foreground"><span className="flex items-center gap-1"><ArrowUp size={11} /><ArrowDown size={11} /> to navigate</span><span>↵ to open</span><span className="ml-auto">esc to close</span></div>
       </Command>
@@ -71,29 +72,46 @@ function SearchDocs() {
   </Dialog>;
 }
 
-function SidebarNavigation({ close }: { close?: () => void }) {
+function SidebarNavigation({ close, pageDocs, activeVersion, basePath }: { close?: () => void; pageDocs: Doc[]; activeVersion: string; basePath: string }) {
   const pathname = usePathname();
+  const groups = [...new Set(pageDocs.map((doc) => doc.group))];
+  const quickStart = pageDocs.some((doc) => doc.slug === "quick-start") ? "quick-start" : "introduction";
   return <>
-    <Link href="/docs/quick-start" className="sidebar-start" onClick={close}><span className="sidebar-start-icon"><Terminal size={16} /></span><span>Start building<small>Your first API in minutes</small></span><ArrowRight size={14} /></Link>
-    <nav aria-label="Documentation">{groups.map((group) => <div className="nav-group" key={group}><p>{group}</p>{docs.filter((doc) => doc.group === group).map((doc) => <Link key={doc.slug} href={docHref(doc.slug)} onClick={close} aria-current={pathname === docHref(doc.slug) || pathname === `${docHref(doc.slug)}/` || pathname === "/" && doc.slug === "introduction" ? "page" : undefined} className="sidebar-link">{doc.title}{doc.slug === "quick-start" && <span className="nav-new">START</span>}</Link>)}</div>)}</nav>
-    <div className="sidebar-bottom"><span className="flex items-center gap-2"><span className="status-dot" /> Release candidate</span><span>v{version}</span></div>
+    <Link href={`${basePath}/${quickStart}`} className="sidebar-start" onClick={close}><span className="sidebar-start-icon"><Terminal size={16} /></span><span>Start building<small>Your first API in minutes</small></span><ArrowRight size={14} /></Link>
+    <nav aria-label="Documentation">{groups.map((group) => <div className="nav-group" key={group}><p>{group}</p>{pageDocs.filter((doc) => doc.group === group).map((doc) => <Link key={doc.slug} href={`${basePath}/${doc.slug}`} onClick={close} aria-current={pathname === `${basePath}/${doc.slug}` || pathname === `${basePath}/${doc.slug}/` ? "page" : undefined} className="sidebar-link">{doc.title}{doc.slug === "quick-start" && <span className="nav-new">START</span>}</Link>)}</div>)}</nav>
+    <div className="sidebar-bottom"><span className="flex items-center gap-2"><span className="status-dot" /> {activeVersion.includes("rc") ? "Release candidate" : "Stable release"}</span><span>v{activeVersion}</span></div>
   </>;
 }
 
-function MobileNavigation() {
-  const [open, setOpen] = useState(false);
-  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="ghost" size="icon" className="mobile-menu" aria-label="Open navigation"><Menu /></Button></DialogTrigger><DialogContent className="left-0 top-0 h-dvh w-[min(350px,90vw)] max-w-none translate-x-0 overflow-y-auto rounded-none p-6"><DialogTitle className="text-xl font-bold">TSNX Documentation</DialogTitle><DialogDescription className="sr-only">Browse documentation topics</DialogDescription><div><SidebarNavigation close={() => setOpen(false)} /></div></DialogContent></Dialog>;
+function VersionSwitcher({ activeVersion, basePath }: { activeVersion: string; basePath: string }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  return <label className="version-switcher"><span className="sr-only">Documentation version</span><select aria-label="Documentation version" value={activeVersion} onChange={(event) => {
+    const nextVersion = event.target.value;
+    const targetDocs = nextVersion === stableVersion ? stableDocs : docs;
+    const targetPath = nextVersion === stableVersion ? `/v${stableVersion}/docs` : "/docs";
+    const currentSlug = pathname.slice(basePath.length).replace(/^\/+/, "").split("/")[0];
+    const slug = targetDocs.some((doc) => doc.slug === currentSlug) ? currentSlug : "introduction";
+    router.push(`${targetPath}/${slug}`);
+  }}>
+    <option value={version}>v{version} · RC</option>
+    <option value={stableVersion}>v{stableVersion} · Stable</option>
+  </select><ChevronDown size={13} aria-hidden="true" /></label>;
 }
 
-export function DocsShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+function MobileNavigation({ pageDocs, activeVersion, basePath }: { pageDocs: Doc[]; activeVersion: string; basePath: string }) {
+  const [open, setOpen] = useState(false);
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="ghost" size="icon" className="mobile-menu" aria-label="Open navigation"><Menu /></Button></DialogTrigger><DialogContent className="left-0 top-0 h-dvh w-[min(350px,90vw)] max-w-none translate-x-0 overflow-y-auto rounded-none p-6"><DialogTitle className="text-xl font-bold">TSNX Documentation</DialogTitle><DialogDescription className="sr-only">Browse documentation topics</DialogDescription><div><SidebarNavigation pageDocs={pageDocs} activeVersion={activeVersion} basePath={basePath} close={() => setOpen(false)} /></div></DialogContent></Dialog>;
+}
+
+export function DocsShell({ children, docs: pageDocs = docs, version: activeVersion = version, basePath = "/docs" }: { children: React.ReactNode; docs?: Doc[]; version?: string; basePath?: string }) {
   return <>
     <a className="skip-link" href="#main-content">Skip to content</a>
     <header className="site-header"><div className="header-inner">
-      <MobileNavigation /><Brand /><span className="header-divider" /><span className="header-docs">Documentation</span><span className="version-badge">v{version} <span>RC</span></span>
-      <div className="header-right"><SearchDocs /><a className="header-github" href={repository} target="_blank" rel="noreferrer" aria-label="TSNX on GitHub"><Github size={19} /></a><span className="header-divider secondary" /><ThemeToggle /></div>
+      <MobileNavigation pageDocs={pageDocs} activeVersion={activeVersion} basePath={basePath} /><Brand /><span className="header-divider" /><span className="header-docs">Documentation</span><VersionSwitcher activeVersion={activeVersion} basePath={basePath} />
+      <div className="header-right"><SearchDocs pageDocs={pageDocs} basePath={basePath} /><a className="header-github" href={repository} target="_blank" rel="noreferrer" aria-label="TSNX on GitHub"><Github size={19} /></a><span className="header-divider secondary" /><ThemeToggle /></div>
     </div></header>
-    <div className="docs-layout"><aside className="desktop-sidebar"><SidebarNavigation /></aside><div key={pathname} className="page-container">{children}</div></div>
+    <div className="docs-layout"><aside className="desktop-sidebar"><SidebarNavigation pageDocs={pageDocs} activeVersion={activeVersion} basePath={basePath} /></aside><div className="page-container">{children}</div></div>
   </>;
 }
 

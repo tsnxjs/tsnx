@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DocPage } from "@/components/doc-page";
-import { docs } from "@/lib/docs";
+import { DocsShell } from "@/components/docs-shell";
+import { docs, version } from "@/lib/docs";
 
 export const dynamicParams = false;
 export function generateStaticParams() { return docs.map(({ slug }) => ({ slug })); }
@@ -16,5 +17,5 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   const { slug } = await params;
   const doc = docs.find((item) => item.slug === slug);
   if (!doc) notFound();
-  return <DocPage doc={doc} />;
+  return <DocsShell docs={docs} version={version} basePath="/docs"><DocPage doc={doc} allDocs={docs} basePath="/docs" sourceRef="main" /></DocsShell>;
 }
