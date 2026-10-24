@@ -1210,6 +1210,49 @@ export const docs: Doc[] = [
     ]
   },
   {
+    "slug": "standard-schema-binding",
+    "title": "Standard Schema binding",
+    "group": "Build your API",
+    "source": "packages/web/src/binding/body-binder.ts",
+    "sources": ["packages/web/src/binding/query-binder.ts", "packages/web/src/binding/route-binder.ts", "packages/web/src/descriptors/descriptors.ts"],
+    "description": "Use a compatible schema library as the single parser for an HTTP input.",
+    "sections": [
+      {
+        "id": "what-standard-schema-does",
+        "title": "Use the schema library you prefer",
+        "text": "TSNX accepts schemas that implement the Standard Schema interface. The selected library performs parsing, validation, and transforms; TSNX awaits its result, passes the inferred output to the handler, and maps issues to the normal HTTP 400 binding response.",
+        "paragraphs": [
+          "This is an alternative to TSNX structural descriptors for one input. Do not combine a Standard Schema validator with a second native descriptor for that same body, query, route, or header input.",
+          "Install the schema library in your application. TSNX depends only on the Standard Schema contract, so your application chooses and owns its validator package."
+        ]
+      },
+      {
+        "id": "standard-schema-body",
+        "title": "Parse a request body",
+        "text": "The handler receives the schema library's output type, including values created by transforms. Put constraints and transforms in the external schema; keep fluentv for application or domain validation after binding.",
+        "filename": "src/routes/products.ts",
+        "code": "import { z } from 'zod';\nimport { WebApplication, Results, body, type Infer } from '@tsnx/web';\n\nconst CreateProduct = z.object({\n  name: z.string().trim().min(1),\n  status: z.enum(['draft', 'active']),\n  quantity: z.coerce.number().int().positive(),\n});\n\ntype CreateProductInput = Infer<typeof CreateProduct>;\n\nconst app = WebApplication.createBuilder().build();\n\napp.mapPost('/products', [body(CreateProduct)], (input) => {\n  const typed: CreateProductInput = input;\n  return Results.created(typed);\n});"
+      },
+      {
+        "id": "standard-schema-other-inputs",
+        "title": "Use the same contract for query, route, and header inputs",
+        "text": "Query and route values arrive as strings; the external schema decides whether and how to coerce them. A header schema receives its raw string value. Async Standard Schema validators are awaited on all supported input sources.",
+        "code": "import { z } from 'zod';\nimport { WebApplication, Results, query, route, header } from '@tsnx/web';\n\nconst app = WebApplication.createBuilder().build();\n\napp.mapGet('/products/:id', [\n  route(z.object({ id: z.string().uuid() })),\n  query(z.object({ page: z.coerce.number().int().positive().default(1) })),\n  header('x-tenant', z.string().min(1)),\n], (path, search, tenant) => {\n  return Results.json({ id: path.id, page: search.page, tenant });\n});"
+      },
+      {
+        "id": "standard-schema-errors",
+        "title": "Read errors and OpenAPI schemas",
+        "text": "Standard Schema issues become HTTP 400 errors with their paths and messages. The issue code is schema_validation; the Problem Details response includes both the errors dictionary and the issues array. External validators control unknown-key behavior and coercion, so document those choices when they differ from native TSNX descriptors.",
+        "code": "{\n  \"issues\": [\n    {\n      \"path\": \"quantity\",\n      \"code\": \"schema_validation\",\n      \"message\": \"Expected number, received NaN\"\n    }\n  ]\n}",
+        "paragraphs": [
+          "OpenAPI generation cannot infer a JSON Schema from a validator's private implementation. Register a schemaAdapters function in mapOpenApi options for the external schemas used by your endpoints. Unrecognized external schemas are output as {}."
+        ],
+        "filename": "HTTP 400 response"
+      }
+    ],
+    "related": ["openapi", "migrating-to-v2"]
+  },
+  {
     "slug": "migrating-to-v2",
     "title": "Migrate to TSNX 2.0",
     "group": "Getting started",
