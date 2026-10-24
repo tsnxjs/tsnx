@@ -1,6 +1,6 @@
 {
   "name": "@tsnx/scalar",
-  "version": "2.0.0-rc.2",
+  "version": "2.0.0-rc.3",
   "description": "TSNX Interactive API Reference via Scalar",
   "license": "MIT",
   "type": "module",

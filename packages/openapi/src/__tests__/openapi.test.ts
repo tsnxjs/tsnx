@@ -136,8 +136,8 @@ describe('Milestone 06: @tsnx/openapi Document Generation', () => {
     ] as const);
     assert.deepStrictEqual(convertToJsonSchema(union), {
       oneOf: [
-        { type: 'object', properties: { mode: { type: 'string', const: 'free' } }, required: ['mode'], additionalProperties: false },
-        { type: 'object', properties: { mode: { type: 'string', const: 'flat' }, amount: { type: 'number' } }, required: ['mode', 'amount'], additionalProperties: false },
+        { type: 'object', properties: { mode: { type: 'string', const: 'free' } }, required: ['mode'], additionalProperties: false, title: 'mode: free' },
+        { type: 'object', properties: { mode: { type: 'string', const: 'flat' }, amount: { type: 'number' } }, required: ['mode', 'amount'], additionalProperties: false, title: 'mode: flat' },
       ],
       discriminator: { propertyName: 'mode' },
     });
@@ -156,8 +156,8 @@ describe('Milestone 06: @tsnx/openapi Document Generation', () => {
           type: 'array',
           items: {
             oneOf: [
-              { type: 'object', properties: { type: { type: 'string', const: 'COD' }, enabled: { type: 'boolean' } }, required: ['type', 'enabled'], additionalProperties: false },
-              { type: 'object', properties: { type: { type: 'string', const: 'BANK_TRANSFER' }, enabled: { type: 'boolean' } }, required: ['type', 'enabled'], additionalProperties: false },
+              { type: 'object', properties: { type: { type: 'string', const: 'COD' }, enabled: { type: 'boolean' } }, required: ['type', 'enabled'], additionalProperties: false, title: 'type: COD' },
+              { type: 'object', properties: { type: { type: 'string', const: 'BANK_TRANSFER' }, enabled: { type: 'boolean' } }, required: ['type', 'enabled'], additionalProperties: false, title: 'type: BANK_TRANSFER' },
             ],
             discriminator: { propertyName: 'type' },
           },
@@ -193,7 +193,7 @@ describe('Milestone 06: @tsnx/openapi Document Generation', () => {
       properties: {
         shipping: {
           oneOf: [
-            { type: 'object', properties: { mode: { type: 'string', const: 'free' } }, required: ['mode'], additionalProperties: false },
+            { type: 'object', properties: { mode: { type: 'string', const: 'free' } }, required: ['mode'], additionalProperties: false, title: 'mode: free' },
             {
               type: 'object',
               properties: {
@@ -208,6 +208,7 @@ describe('Milestone 06: @tsnx/openapi Document Generation', () => {
               },
               required: ['mode', 'flatAmount'],
               additionalProperties: false,
+              title: 'mode: flat',
             },
           ],
           discriminator: { propertyName: 'mode' },
@@ -216,7 +217,7 @@ describe('Milestone 06: @tsnx/openapi Document Generation', () => {
           type: 'array',
           items: {
             oneOf: [
-              { type: 'object', properties: { type: { type: 'string', const: 'COD' }, enabled: { type: 'boolean' } }, required: ['type', 'enabled'], additionalProperties: false },
+              { type: 'object', properties: { type: { type: 'string', const: 'COD' }, enabled: { type: 'boolean' } }, required: ['type', 'enabled'], additionalProperties: false, title: 'type: COD' },
               {
                 type: 'object',
                 properties: {
@@ -234,6 +235,7 @@ describe('Milestone 06: @tsnx/openapi Document Generation', () => {
                 },
                 required: ['type', 'enabled', 'accounts'],
                 additionalProperties: false,
+                title: 'type: BANK_TRANSFER',
               },
             ],
             discriminator: { propertyName: 'type' },

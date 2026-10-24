@@ -36,7 +36,10 @@ export function convertSchemaFieldToJsonSchema(field: any): any {
   if (isIsoDateDescriptor(field)) return { type: 'string', format: 'date-time' };
   if (isUnionDescriptor(field)) return { oneOf: field.variants.map(convertSchemaFieldToJsonSchema) };
   if (isDiscriminatedUnionDescriptor(field)) return {
-    oneOf: field.variants.map((variant) => convertBindingSchemaToJsonSchema(variant)),
+    oneOf: field.variants.map((variant) => ({
+      ...convertBindingSchemaToJsonSchema(variant),
+      title: getDiscriminatorTitle(field.discriminator, variant[field.discriminator]),
+    })),
     discriminator: { propertyName: field.discriminator },
   };
   if (isObjectDescriptor(field)) return convertBindingSchemaToJsonSchema(field.schema, field.unknownProperties === 'reject');
@@ -46,6 +49,17 @@ export function convertSchemaFieldToJsonSchema(field: any): any {
   if (primitive) return { type: primitive.type };
   if (isBindingSchema(field)) return convertBindingSchemaToJsonSchema(field);
   return {};
+}
+
+function getDiscriminatorTitle(discriminator: string, field: any): string {
+  let value = field;
+  while (isOptional(value) || isNullable(value)) value = value.inner;
+  const values = isLiteralDescriptor(value)
+    ? [value.value]
+    : isEnumDescriptor(value)
+      ? [...value.values]
+      : [];
+  return `${discriminator}: ${values.map((item) => String(item)).join(' | ')}`;
 }
 
 export function convertBindingSchemaToJsonSchema(schema: BindingSchema, strict = true): any {
