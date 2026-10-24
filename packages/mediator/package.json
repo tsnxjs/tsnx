@@ -1,6 +1,6 @@
 {
   "name": "@tsnx/mediator",
-  "version": "2.0.0-rc.1",
+  "version": "2.0.0-rc.2",
   "description": "Enterprise Mediator and CQRS pattern implementation for TSNX with Scoped DI, Pipeline Behaviors, and Cancellation Tokens",
   "license": "MIT",
   "type": "module",

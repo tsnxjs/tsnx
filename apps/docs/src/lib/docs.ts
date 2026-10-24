@@ -23,7 +23,7 @@ export type Doc = {
 };
 
 export const repository = "https://github.com/tsnxjs/tsnx";
-export const version = "2.0.0-rc.1";
+export const version = "2.0.0-rc.2";
 
 export const helloExample = "import { WebApplication, Results } from '@tsnx/web';\n\nconst builder = WebApplication.createBuilder();\nconst app = builder.build();\n\napp.mapGet('/hello', () => {\n  return Results.json({ message: 'Hello, TSNX!' });\n});\n\nawait app.run();";
 
@@ -141,7 +141,7 @@ export const docs: Doc[] = [
         "id": "install-the-cli",
         "title": "Install the CLI",
         "text": "Install the TSNX 2.0 release candidate globally using npm or pnpm. It is published on the rc dist-tag.",
-        "code": "npm install -g @tsnx/cli@2.0.0-rc.1\ntsnx --version\ntsnx --help",
+        "code": "npm install -g @tsnx/cli@2.0.0-rc.2\ntsnx --version\ntsnx --help",
         "language": "bash",
         "filename": "Terminal"
       },
@@ -157,7 +157,7 @@ export const docs: Doc[] = [
         "id": "existing-project",
         "title": "Add to an existing project",
         "text": "You can also use the HTTP and hosting packages directly in an existing TypeScript application. Compile and run your application with your existing ESM tooling.",
-        "code": "npm install @tsnx/web@2.0.0-rc.1 @tsnx/hosting@2.0.0-rc.1",
+        "code": "npm install @tsnx/web@2.0.0-rc.2 @tsnx/hosting@2.0.0-rc.2",
         "language": "bash",
         "filename": "Terminal"
       },
@@ -361,7 +361,7 @@ export const docs: Doc[] = [
         "id": "package-metadata",
         "title": "Package configuration",
         "text": "Use package.json for the package name, dependencies, entry point, and TSNX metadata. Keep tsconfig.json focused on TypeScript compiler settings.",
-        "code": "{\n  \"name\": \"@acme/host\",\n  \"version\": \"0.1.0\",\n  \"type\": \"module\",\n  \"private\": true,\n  \"main\": \"./dist/main.js\",\n  \"tsnx\": {\n    \"name\": \"Host\",\n    \"type\": \"webapi\"\n  },\n  \"dependencies\": {\n    \"@acme/inventory\": \"workspace:*\",\n    \"@tsnx/web\": \"2.0.0-rc.1\"\n  },\n  \"devDependencies\": {\n    \"@types/node\": \"^22.13.9\"\n  }\n}",
+        "code": "{\n  \"name\": \"@acme/host\",\n  \"version\": \"0.1.0\",\n  \"type\": \"module\",\n  \"private\": true,\n  \"main\": \"./dist/main.js\",\n  \"tsnx\": {\n    \"name\": \"Host\",\n    \"type\": \"webapi\"\n  },\n  \"dependencies\": {\n    \"@acme/inventory\": \"workspace:*\",\n    \"@tsnx/web\": \"2.0.0-rc.2\"\n  },\n  \"devDependencies\": {\n    \"@types/node\": \"^22.13.9\"\n  }\n}",
         "language": "json",
         "filename": "Entrypoints/Host/package.json",
         "note": "Library projects use src/index.ts with main ./dist/index.js and types ./dist/index.d.ts in package.json. TypeScript references control build order; package dependencies make imports available at runtime."
@@ -1305,7 +1305,7 @@ export const docs: Doc[] = [
         "id": "install-packages",
         "title": "Install the integrations",
         "text": "Add both integrations to the application. OpenAPI generates the document; Scalar serves the interactive reference.",
-        "code": "npm install @tsnx/openapi@2.0.0-rc.1 @tsnx/scalar@2.0.0-rc.1",
+        "code": "npm install @tsnx/openapi@2.0.0-rc.2 @tsnx/scalar@2.0.0-rc.2",
         "language": "bash",
         "filename": "Terminal"
       },
