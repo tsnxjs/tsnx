@@ -3,6 +3,7 @@ export type BindingSource = 'body' | 'query' | 'route' | 'header';
 export interface BindingErrorEntry {
   source: BindingSource;
   path: string;
+  code: string;
   message: string;
 }
 
@@ -15,7 +16,7 @@ export class RequestBindingException extends Error {
   public readonly entries: readonly BindingErrorEntry[];
 
   constructor(entries: BindingErrorEntry[]) {
-    const summary = entries.map((e) => `[${e.source}:${e.path}] ${e.message}`).join('; ');
+    const summary = entries.map((e) => `[${e.source}:${e.path}:${e.code}] ${e.message}`).join('; ');
     super(`Request binding failed: ${summary}`);
     this.name = 'RequestBindingException';
     this.entries = entries;
@@ -35,6 +36,7 @@ export class RequestBindingException extends Error {
       title: 'One or more request binding errors occurred.',
       status: 400,
       errors,
+      issues: this.entries.map(({ path, code, message }) => ({ path, code, message })),
     };
   }
 }

@@ -1,179 +1,79 @@
 import { BindingErrorEntry, RequestBindingException } from './binding-error.js';
-import { inspectField } from './modifiers.js';
-import { parseIso8601Date, parseStringBoolean, parseStringNumber } from './parsers.js';
-import { BindingSchema, Infer } from './types.js';
+import { isArrayDescriptor, isNullable, isObjectDescriptor, isOptional } from './modifiers.js';
+import { isStandardSchema, validateStandardSchema } from './body-binder.js';
+import { parseTextField } from './text-parser.js';
+import { BindingSchema } from './types.js';
 
-export function bindQuery<T extends BindingSchema>(
-  schema: T,
-  querySource: URLSearchParams | Record<string, string | string[] | undefined>,
-): Infer<T> {
+export function bindQuery(schemaInput: any, source: URLSearchParams | Record<string, string | string[] | undefined>): any {
+  if (isStandardSchema(schemaInput)) return validateStandardSchema(schemaInput, toQueryRecord(source), 'query');
+  const descriptor = isObjectDescriptor(schemaInput) ? schemaInput : undefined;
+  const schema: BindingSchema = descriptor ? descriptor.schema : schemaInput;
   const errors: BindingErrorEntry[] = [];
-  const result: Record<string, any> = {};
-
-  const isSearchParams = querySource instanceof URLSearchParams;
-
+  const result: Record<string, any> = descriptor?.unknownProperties === 'passthrough' ? toQueryRecord(source) : {};
+  const known = new Set(Object.keys(schema));
   for (const [key, field] of Object.entries(schema)) {
-    const meta = inspectField(field);
-
-    if (meta.isArray) {
-      // Array field: handle multiple values (e.g. ?tag=a&tag=b)
-      let rawValues: string[] = [];
-      let exists = false;
-
-      if (isSearchParams) {
-        if (querySource.has(key)) {
-          rawValues = querySource.getAll(key);
-          exists = true;
-        }
-      } else {
-        const val = querySource[key];
-        if (val !== undefined) {
-          exists = true;
-          rawValues = Array.isArray(val) ? val : [val];
-        }
-      }
-
-      if (!exists || rawValues.length === 0) {
-        if (!meta.isOptional) {
-          errors.push({
-            source: 'query',
-            path: key,
-            message: `Query parameter '${key}' is required`,
-          });
-        }
-        continue;
-      }
-
-      const arrResult: any[] = [];
-      let arrayHasError = false;
-
-      for (let i = 0; i < rawValues.length; i++) {
-        const item = rawValues[i];
-        const itemPath = `${key}[${i}]`;
-
-        const parsed = parseQueryScalar(meta.innerType, item, itemPath);
-        if (parsed.success) {
-          arrResult.push(parsed.value);
-        } else {
-          errors.push({
-            source: 'query',
-            path: itemPath,
-            message: parsed.error,
-          });
-          arrayHasError = true;
-        }
-      }
-
-      if (!arrayHasError) {
-        result[key] = arrResult;
-      }
+    const values = getValues(source, key);
+    let current: any = field;
+    let optional = false;
+    let nullable = false;
+    while (isOptional(current) || isNullable(current)) {
+      if (isOptional(current)) optional = true;
+      if (isNullable(current)) nullable = true;
+      current = current.inner;
+    }
+    const array = isArrayDescriptor(current) ? current : undefined;
+    if (array) current = array.inner;
+    if (values.length === 0) {
+      if (!optional) errors.push(entry(key, 'required', `Query parameter '${key}' is required`));
       continue;
     }
-
-    // Scalar field
-    let rawValue: string | undefined;
-    let exists = false;
-
-    if (isSearchParams) {
-      if (querySource.has(key)) {
-        const allVals = querySource.getAll(key);
-        if (allVals.length > 1) {
-          errors.push({
-            source: 'query',
-            path: key,
-            message: `Query parameter '${key}' cannot have multiple values`,
-          });
-          continue;
-        }
-        exists = true;
-        rawValue = allVals[0];
-      }
-    } else {
-      const val = querySource[key];
-      if (val !== undefined) {
-        if (Array.isArray(val) && val.length > 1) {
-          errors.push({
-            source: 'query',
-            path: key,
-            message: `Query parameter '${key}' cannot have multiple values`,
-          });
-          continue;
-        }
-        exists = true;
-        rawValue = Array.isArray(val) ? val[0] : val;
-      }
-    }
-
-    if (!exists || rawValue === undefined) {
-      if (!meta.isOptional) {
-        errors.push({
-          source: 'query',
-          path: key,
-          message: `Query parameter '${key}' is required`,
-        });
-      }
+    if (!array && values.length > 1) {
+      errors.push(entry(key, 'duplicate_value', `Query parameter '${key}' cannot have multiple values`));
       continue;
     }
-
-    // Null check: query string ?key=null
-    if (rawValue === 'null') {
-      if (meta.isNullable) {
-        result[key] = null;
-        continue;
+    if (array) {
+      const items: unknown[] = [];
+      let valid = true;
+      for (let i = 0; i < values.length; i++) {
+        if (nullable && values[i] === 'null') { items.push(null); continue; }
+        const parsed = parseTextField(current, values[i], `${key}[${i}]`, 'query');
+        if (parsed.success) items.push(parsed.value);
+        else { errors.push(entry(`${key}[${i}]`, parsed.code, parsed.error)); valid = false; }
       }
+      if (valid) result[key] = items;
+      continue;
     }
-
-    const parsed = parseQueryScalar(meta.innerType, rawValue, key);
-    if (parsed.success) {
-      result[key] = parsed.value;
-    } else {
-      errors.push({
-        source: 'query',
-        path: key,
-        message: parsed.error,
-      });
+    if (nullable && values[0] === 'null') { result[key] = null; continue; }
+    const parsed = parseTextField(current, values[0], key, 'query');
+    if (parsed.success) result[key] = parsed.value;
+    else errors.push(entry(key, parsed.code, parsed.error));
+  }
+  if (descriptor?.unknownProperties !== 'passthrough') {
+    for (const key of sourceKeys(source)) {
+      if (!known.has(key)) errors.push(entry(key, 'unknown_key', `Unknown query parameter '${key}'`));
     }
   }
-
-  if (errors.length > 0) {
-    throw new RequestBindingException(errors);
-  }
-
-  return result as Infer<T>;
+  if (errors.length) throw new RequestBindingException(errors);
+  return result;
 }
 
-function parseQueryScalar(
-  type: any,
-  value: string,
-  path: string,
-): { success: true; value: any } | { success: false; error: string } {
-  if (type === String) {
-    return { success: true, value };
+function getValues(source: URLSearchParams | Record<string, string | string[] | undefined>, key: string): string[] {
+  if (source instanceof URLSearchParams) return source.getAll(key);
+  const value = source[key];
+  return value === undefined ? [] : Array.isArray(value) ? value : [value];
+}
+function sourceKeys(source: URLSearchParams | Record<string, string | string[] | undefined>): string[] {
+  return source instanceof URLSearchParams ? [...new Set(source.keys())] : Object.keys(source).filter((key) => source[key] !== undefined);
+}
+function toQueryRecord(source: URLSearchParams | Record<string, string | string[] | undefined>): Record<string, string | string[]> {
+  if (!(source instanceof URLSearchParams)) return Object.fromEntries(Object.entries(source).filter(([, value]) => value !== undefined)) as Record<string, string | string[]>;
+  const result: Record<string, string | string[]> = {};
+  for (const key of new Set(source.keys())) {
+    const values = source.getAll(key);
+    result[key] = values.length === 1 ? values[0] : values;
   }
-
-  if (type === Number) {
-    const num = parseStringNumber(value);
-    if (!num.success) {
-      return { success: false, error: `Must be a valid number, received '${value}'` };
-    }
-    return { success: true, value: num.value };
-  }
-
-  if (type === Boolean) {
-    const bool = parseStringBoolean(value);
-    if (!bool.success) {
-      return { success: false, error: `Must be a boolean ('true' or 'false'), received '${value}'` };
-    }
-    return { success: true, value: bool.value };
-  }
-
-  if (type === Date) {
-    const parsedDate = parseIso8601Date(value);
-    if (!parsedDate.success) {
-      return { success: false, error: parsedDate.error };
-    }
-    return { success: true, value: parsedDate.value };
-  }
-
-  return { success: false, error: `Unsupported schema type for query parameter '${path}'` };
+  return result;
+}
+function entry(path: string, code: string, message: string): BindingErrorEntry {
+  return { source: 'query', path, code, message };
 }

@@ -112,4 +112,21 @@ export interface OpenApiOptions {
    * Configured servers. Defaults to `[{ url: '/' }]` if omitted.
    */
   readonly servers?: readonly OpenApiServer[];
+  /** Optional bridges for external schemas such as Zod. Return undefined when an adapter does not recognize the schema. */
+  readonly schemaAdapters?: readonly OpenApiSchemaAdapter[];
+}
+
+export type OpenApiSchemaAdapter = (schema: unknown) => any | undefined;
+
+export interface OpenApiPropertyDocs {
+  readonly enum?: readonly (string | number)[];
+  readonly example?: unknown;
+  readonly schema?: Record<string, unknown>;
+}
+
+export interface OpenApiEndpointDocs {
+  readonly requestBody?: {
+    /** Dot paths address object fields; `[]` traverses array items. */
+    readonly properties?: Readonly<Record<string, OpenApiPropertyDocs>>;
+  };
 }

@@ -1,9 +1,12 @@
 import { HttpContext, Results, RouteHandlerBuilder, WebApplication } from '@tsnx/web';
 import { generateOpenApiDocument } from './generator.js';
 import { OPENAPI_OPTIONS } from './tokens.js';
-import { OpenApiOptions } from './types.js';
+import { OpenApiEndpointDocs, OpenApiOptions } from './types.js';
 
 declare module '@tsnx/web' {
+  interface RouteHandlerBuilder {
+    withOpenApiDocs(docs: OpenApiEndpointDocs): this;
+  }
   interface WebApplication {
     mapOpenApi(
       pathOrOptions?: string | OpenApiOptions,
@@ -12,6 +15,10 @@ declare module '@tsnx/web' {
     exportOpenApi(outputPath: string, options?: OpenApiOptions): Promise<void>;
   }
 }
+
+RouteHandlerBuilder.prototype.withOpenApiDocs = function (docs: OpenApiEndpointDocs): RouteHandlerBuilder {
+  return this.withMetadata('openApi.docs', docs);
+};
 
 /**
  * Maps the OpenAPI specification endpoint to the web application.

@@ -3,10 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { IServiceProvider } from '@tsnx/hosting';
-import { bindBody } from '../binding/body-binder.js';
+import { bindBody, isStandardSchema, validateStandardSchema } from '../binding/body-binder.js';
 import { bindQuery } from '../binding/query-binder.js';
 import { bindRoute } from '../binding/route-binder.js';
-import { BindingSchema, Infer } from '../binding/types.js';
 import { RequestBindingException } from '../binding/binding-error.js';
 import { ProblemDetailsInput, BadHttpRequestException } from '../errors/types.js';
 import { formatProblemDetails } from '../errors/problem-details.js';
@@ -217,7 +216,7 @@ export class HttpRequest {
     );
   }
 
-  public async bindBody<T extends BindingSchema>(schema: T): Promise<Infer<T>> {
+  public async bindBody(schema: any): Promise<any> {
     const contentType = this.headers['content-type'];
     if (!this.isJsonContentType(contentType)) {
       throw new BadHttpRequestException(
@@ -235,20 +234,22 @@ export class HttpRequest {
           {
             source: 'body',
             path: '$',
+            code: 'invalid_json',
             message: err.message,
           },
         ]);
       }
       throw err;
     }
-    return bindBody(schema, rawJson);
+    if (isStandardSchema(schema)) return await validateStandardSchema(schema, rawJson, 'body');
+    return (bindBody as any)(schema, rawJson);
   }
 
-  public bindQuery<T extends BindingSchema>(schema: T): Infer<T> {
+  public bindQuery(schema: any): any {
     return bindQuery(schema, this.query);
   }
 
-  public bindRoute<T extends BindingSchema>(schema: T): Infer<T> {
+  public bindRoute(schema: any): any {
     return bindRoute(schema, this.params);
   }
 }

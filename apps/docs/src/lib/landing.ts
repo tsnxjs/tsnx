@@ -14,7 +14,7 @@ app.mapPost('/warehouses', [body(NewWarehouse)], (warehouse) => {
 
 await app.run();`;
 
-export const installCommand = "npm install -g @tsnx/cli@1.3.0";
+export const installCommand = "npm install -g @tsnx/cli@2.0.0-rc.1";
 
 export const workspaceTree = `Acme/
 ├── Entrypoints/

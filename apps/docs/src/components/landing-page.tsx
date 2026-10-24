@@ -29,7 +29,7 @@ export function LandingPage() {
         <div className="landing-hero-grid" aria-hidden="true" />
         <div className="landing-container landing-hero-content">
           <div className="landing-hero-copy">
-            <Link className="landing-release-link" href="/docs/introduction"><span className="status-dot" /> v{version}<span className="release-divider" /> Stable Release <ArrowRight size={13} /></Link>
+            <Link className="landing-release-link" href="/docs/migrating-to-v2"><span className="status-dot" /> v{version}<span className="release-divider" /> Release Candidate <ArrowRight size={13} /></Link>
             <p className="landing-eyebrow">THE TYPESCRIPT APPLICATION FRAMEWORK</p>
             <h1 id="landing-title">Build with structure.<br /><span>Ship with confidence.</span></h1>
             <p className="landing-hero-description">Familiar application architecture.<br />Native TypeScript. A foundation that grows with you.</p>
@@ -75,7 +75,7 @@ export function LandingPage() {
         <CodeBlock code={`${installCommand}\n\ntsnx create webapi Host\n\ncd Host\ntsnx run`} language="bash" filename="Terminal" />
       </div></section>
 
-      <section className="landing-release-section landing-container" aria-labelledby="release-title"><div className="landing-release-copy"><span className="landing-release-icon"><Layers3 size={24} /></span><div><p className="landing-eyebrow">v{version} · STABLE RELEASE</p><h2 id="release-title">Built with structure. Ship with confidence.</h2><p>Explore the framework documentation, guides, and project system architecture.</p></div></div><Button variant="outline" asChild><Link href="/docs/introduction">Explore the docs <ArrowRight /></Link></Button></section>
+      <section className="landing-release-section landing-container" aria-labelledby="release-title"><div className="landing-release-copy"><span className="landing-release-icon"><Layers3 size={24} /></span><div><p className="landing-eyebrow">v{version} · RELEASE CANDIDATE</p><h2 id="release-title">Try TSNX 2.0 and review the migration guide.</h2><p>Explore the new request descriptors, OpenAPI endpoint documentation, and migration notes.</p></div></div><Button variant="outline" asChild><Link href="/docs/migrating-to-v2">Read migration guide <ArrowRight /></Link></Button></section>
     </main>
     <footer className="landing-footer"><div className="landing-container"><div className="landing-footer-brand"><Brand /><p>A thoughtful foundation for TypeScript APIs.</p></div><nav aria-label="Footer navigation"><Link href="/docs/introduction">Documentation</Link><Link href="/docs/quick-start">Quick start</Link><a href={repository} target="_blank" rel="noreferrer">GitHub <ArrowUpRight size={12} /></a><a href={`${repository}/issues`} target="_blank" rel="noreferrer">Feedback <ArrowUpRight size={12} /></a></nav><span className="landing-license">MIT · TSNX</span></div></footer>
   </div>;

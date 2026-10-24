@@ -314,8 +314,8 @@ describe('Milestone 03: Exception Handling & Problem Details Pipeline', () => {
 
     app.mapGet('/manual-binding-error', () => {
       throw new RequestBindingException([
-        { source: 'query', path: 'page', message: 'Expected integer greater than 0' },
-        { source: 'query', path: 'size', message: 'Maximum size is 100' },
+        { source: 'query', path: 'page', code: 'invalid_integer', message: 'Expected integer greater than 0' },
+        { source: 'query', path: 'size', code: 'out_of_range', message: 'Maximum size is 100' },
       ]);
     });
 

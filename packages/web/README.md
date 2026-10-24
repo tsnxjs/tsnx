@@ -45,6 +45,16 @@ app.mapGet('/health', () => Results.ok({ status: 'healthy' }));
 await app.run();
 ```
 
+## Request body schemas
+
+HTTP binding descriptors describe the runtime shape of request input and infer
+the handler type. They are for structural parsing; application and domain
+validation belong in a validator such as `fluentv`. The supported descriptor
+scope and extension rule are documented in the repository's
+[`TYPE_DESCRIPTOR_SCOPE.md`](../../docs/TYPE_DESCRIPTOR_SCOPE.md).
+Binding error paths and the 400 issue format are documented in
+[`BINDING_ERRORS.md`](../../docs/BINDING_ERRORS.md).
+
 ## License
 
 MIT

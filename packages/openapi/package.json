@@ -1,6 +1,6 @@
 {
   "name": "@tsnx/openapi",
-  "version": "1.3.2",
+  "version": "2.0.0-rc.1",
   "description": "TSNX OpenAPI 3.1 Document Generation via Static Endpoint Introspection",
   "license": "MIT",
   "type": "module",

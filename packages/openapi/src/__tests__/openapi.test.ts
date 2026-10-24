@@ -13,6 +13,13 @@ import {
   optional,
   nullable,
   array,
+  discriminatedUnion,
+  enumeration,
+  integer,
+  isoDate,
+  literal,
+  rawJsonSchema,
+  union,
 } from '@tsnx/web';
 import {
   addOpenApi,
@@ -36,7 +43,7 @@ describe('Milestone 06: @tsnx/openapi Document Generation', () => {
     assert.deepStrictEqual(convertToJsonSchema(String), { type: 'string' });
     assert.deepStrictEqual(convertToJsonSchema(Number), { type: 'number' });
     assert.deepStrictEqual(convertToJsonSchema(Boolean), { type: 'boolean' });
-    assert.deepStrictEqual(convertToJsonSchema(Date), { type: 'string', format: 'date-time' });
+    assert.deepStrictEqual(convertToJsonSchema(isoDate()), { type: 'string', format: 'date-time' });
 
     // Nullable primitive
     assert.deepStrictEqual(convertToJsonSchema(nullable(String)), {
@@ -82,6 +89,162 @@ describe('Milestone 06: @tsnx/openapi Document Generation', () => {
     assert.deepStrictEqual(converted.properties.address.required, ['street', 'zipCode']);
   });
 
+  test('array item binding schema with a type field is not mistaken for raw JSON Schema', () => {
+    assert.deepStrictEqual(convertToJsonSchema(array({ type: String, enabled: Boolean })), {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          type: { type: 'string' },
+          enabled: { type: 'boolean' },
+        },
+        required: ['type', 'enabled'],
+        additionalProperties: false,
+      },
+    });
+  });
+
+  test('Schema converter emits structural descriptor schemas', () => {
+    enum Status {
+      Draft = 'draft',
+      Active = 'active',
+    }
+
+    const schema = {
+      status: enumeration(Status),
+      method: literal('COD'),
+      name: String,
+      quantity: integer(),
+      tags: array(String),
+    };
+    assert.deepStrictEqual(convertToJsonSchema(schema), {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['draft', 'active'] },
+        method: { type: 'string', const: 'COD' },
+        name: { type: 'string' },
+        quantity: { type: 'integer' },
+        tags: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['status', 'method', 'name', 'quantity', 'tags'],
+      additionalProperties: false,
+    });
+
+    const union = discriminatedUnion('mode', [
+      { mode: literal('free') },
+      { mode: literal('flat'), amount: Number },
+    ] as const);
+    assert.deepStrictEqual(convertToJsonSchema(union), {
+      oneOf: [
+        { type: 'object', properties: { mode: { type: 'string', const: 'free' } }, required: ['mode'], additionalProperties: false },
+        { type: 'object', properties: { mode: { type: 'string', const: 'flat' }, amount: { type: 'number' } }, required: ['mode', 'amount'], additionalProperties: false },
+      ],
+      discriminator: { propertyName: 'mode' },
+    });
+  });
+
+  test('type literal in a binding record is not interpreted as raw schema', () => {
+    assert.deepStrictEqual(convertToJsonSchema({
+      payments: array(discriminatedUnion('type', [
+        { type: literal('COD'), enabled: Boolean },
+        { type: literal('BANK_TRANSFER'), enabled: Boolean },
+      ] as const)),
+    }), {
+      type: 'object',
+      properties: {
+        payments: {
+          type: 'array',
+          items: {
+            oneOf: [
+              { type: 'object', properties: { type: { type: 'string', const: 'COD' }, enabled: { type: 'boolean' } }, required: ['type', 'enabled'], additionalProperties: false },
+              { type: 'object', properties: { type: { type: 'string', const: 'BANK_TRANSFER' }, enabled: { type: 'boolean' } }, required: ['type', 'enabled'], additionalProperties: false },
+            ],
+            discriminator: { propertyName: 'type' },
+          },
+        },
+      },
+      required: ['payments'],
+      additionalProperties: false,
+    });
+  });
+
+  test('raw JSON Schema is converted only through explicit marker', () => {
+    const raw = { type: 'object', properties: { id: { type: 'string' } } } as const;
+    assert.deepStrictEqual(convertToJsonSchema(rawJsonSchema(raw)), raw);
+    assert.deepStrictEqual(convertToJsonSchema(union([literal('COD'), literal('BANK')] as const)), {
+      oneOf: [{ type: 'string', const: 'COD' }, { type: 'string', const: 'BANK' }],
+    });
+  });
+
+  test('OpenAPI structural descriptor contract for nested product-style variants', () => {
+    const ProductSchema = {
+      shipping: discriminatedUnion('mode', [
+        { mode: literal('free') },
+        { mode: literal('flat'), flatAmount: Number, discount: optional({ type: enumeration({ percent: 'percent', amount: 'amount' } as const), value: Number }) },
+      ] as const),
+      payments: array(discriminatedUnion('type', [
+        { type: literal('COD'), enabled: Boolean },
+        { type: literal('BANK_TRANSFER'), enabled: Boolean, accounts: array({ bankAccountId: String, enabled: Boolean }) },
+      ] as const)),
+    };
+
+    assert.deepStrictEqual(convertToJsonSchema(ProductSchema), {
+      type: 'object',
+      properties: {
+        shipping: {
+          oneOf: [
+            { type: 'object', properties: { mode: { type: 'string', const: 'free' } }, required: ['mode'], additionalProperties: false },
+            {
+              type: 'object',
+              properties: {
+                mode: { type: 'string', const: 'flat' },
+                flatAmount: { type: 'number' },
+                discount: {
+                  type: 'object',
+                  properties: { type: { type: 'string', enum: ['percent', 'amount'] }, value: { type: 'number' } },
+                  required: ['type', 'value'],
+                  additionalProperties: false,
+                },
+              },
+              required: ['mode', 'flatAmount'],
+              additionalProperties: false,
+            },
+          ],
+          discriminator: { propertyName: 'mode' },
+        },
+        payments: {
+          type: 'array',
+          items: {
+            oneOf: [
+              { type: 'object', properties: { type: { type: 'string', const: 'COD' }, enabled: { type: 'boolean' } }, required: ['type', 'enabled'], additionalProperties: false },
+              {
+                type: 'object',
+                properties: {
+                  type: { type: 'string', const: 'BANK_TRANSFER' },
+                  enabled: { type: 'boolean' },
+                  accounts: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: { bankAccountId: { type: 'string' }, enabled: { type: 'boolean' } },
+                      required: ['bankAccountId', 'enabled'],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+                required: ['type', 'enabled', 'accounts'],
+                additionalProperties: false,
+              },
+            ],
+            discriminator: { propertyName: 'type' },
+          },
+        },
+      },
+      required: ['shipping', 'payments'],
+      additionalProperties: false,
+    });
+  });
+
   test('generateOpenApiDocument converts route templates and parameter descriptors', () => {
     const builder = WebApplication.createBuilder();
     builder.configureServer({ port: 0, host: '127.0.0.1' });
@@ -98,7 +261,7 @@ describe('Milestone 06: @tsnx/openapi Document Generation', () => {
 
     const CreateOrderBodySchema = {
       customerName: String,
-      items: array(String),
+      items: array({ sku: String, quantity: integer() }),
     };
 
     const OrderResponseSchema = {
@@ -127,7 +290,12 @@ describe('Milestone 06: @tsnx/openapi Document Generation', () => {
       .withDescription('Creates a new customer order')
       .withTags('Orders', 'Checkout')
       .produces(201, OrderResponseSchema)
-      .producesProblem(400);
+      .producesProblem(400)
+      .withOpenApiDocs({ requestBody: { properties: {
+        customerName: { example: 'Ada Lovelace' },
+        'items[].sku': { example: 'SKU-001' },
+        'items[].quantity': { schema: { type: 'integer', minimum: 1 } },
+      } } });
 
     // Route with bare pattern params and no descriptors
     app.mapGet('/items/:itemId', () => Results.text('item'))
@@ -192,6 +360,9 @@ describe('Milestone 06: @tsnx/openapi Document Generation', () => {
     assert.ok(bodyContent);
     assert.strictEqual(bodyContent.schema.type, 'object');
     assert.deepStrictEqual(bodyContent.schema.required, ['customerName', 'items']);
+    assert.equal(bodyContent.schema.properties.customerName.example, 'Ada Lovelace');
+    assert.equal(bodyContent.schema.properties.items.items.properties.sku.example, 'SKU-001');
+    assert.deepStrictEqual(bodyContent.schema.properties.items.items.properties.quantity, { type: 'integer', minimum: 1 });
 
     // Responses verification
     const res201 = orderPost.responses['201'];
@@ -219,6 +390,30 @@ describe('Milestone 06: @tsnx/openapi Document Generation', () => {
     // Document-level tags
     const tagNames = doc.tags?.map((t) => t.name).sort();
     assert.deepStrictEqual(tagNames, ['Checkout', 'Items', 'Orders']);
+  });
+
+  test('OpenAPI accepts explicit adapters for external Standard Schema inputs', () => {
+    const builder = WebApplication.createBuilder();
+    app = builder.build();
+    const ExternalSchema = {
+      '~standard': {
+        version: 1 as const,
+        vendor: 'external-test',
+        validate: (value: unknown) => ({ value }),
+      },
+    };
+    app.mapPost('/external', [body(ExternalSchema)], () => Results.ok());
+
+    const adapter = (schema: unknown) => schema === ExternalSchema
+      ? { type: 'object', properties: { amount: { type: 'integer' } }, required: ['amount'], additionalProperties: false }
+      : undefined;
+    const adapted = generateOpenApiDocument(app, { schemaAdapters: [adapter] });
+    assert.deepStrictEqual(adapted.paths['/external']?.post?.requestBody?.content['application/json']?.schema, {
+      type: 'object', properties: { amount: { type: 'integer' } }, required: ['amount'], additionalProperties: false,
+    });
+
+    const withoutAdapter = generateOpenApiDocument(app);
+    assert.deepStrictEqual(withoutAdapter.paths['/external']?.post?.requestBody?.content['application/json']?.schema, {});
   });
 
   test('addOpenApi + mapOpenApi serves OpenAPI JSON specification endpoint', async () => {

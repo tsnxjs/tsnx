@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TsProject, TsWorkspace } from '@tsnx/core';
+import { TsProject, TsWorkspace, VERSION } from '@tsnx/core';
 
 const CLI_BIN = fileURLToPath(new URL('../index.js', import.meta.url));
 
@@ -254,6 +254,9 @@ console.log('Calculation:', add(10, 25));
       assert.ok(fs.existsSync(path.join(apiDir, 'src', 'main.ts')));
       assert.ok(fs.existsSync(path.join(apiDir, 'src', 'app.ts')));
       assert.ok(fs.existsSync(path.join(apiDir, 'src', 'app.test.ts')));
+      const generatedPackage = JSON.parse(fs.readFileSync(path.join(apiDir, 'package.json'), 'utf8'));
+      assert.equal(generatedPackage.dependencies['@tsnx/web'], `^${VERSION}`);
+      assert.equal(generatedPackage.devDependencies['@tsnx/testing'], `^${VERSION}`);
 
       // Verify loaded as valid TsProject with spec.type: webapi
       const proj = TsProject.loadSync(apiDir);

@@ -1,6 +1,6 @@
 {
   "name": "@tsnx/cli",
-  "version": "1.3.0",
+  "version": "2.0.0-rc.1",
   "description": "TSNX CLI - Developer interface for TypeScript projects and workspaces",
   "license": "MIT",
   "type": "module",

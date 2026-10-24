@@ -1,97 +1,44 @@
 import { BindingErrorEntry, RequestBindingException } from './binding-error.js';
-import { inspectField } from './modifiers.js';
-import { parseIso8601Date, parseStringBoolean, parseStringNumber } from './parsers.js';
-import { BindingSchema, Infer } from './types.js';
+import { isArrayDescriptor, isNullable, isObjectDescriptor, isOptional } from './modifiers.js';
+import { isStandardSchema, validateStandardSchema } from './body-binder.js';
+import { parseTextField } from './text-parser.js';
+import { BindingSchema } from './types.js';
 
-export function bindRoute<T extends BindingSchema>(
-  schema: T,
-  routeParams: Record<string, string | undefined>,
-): Infer<T> {
+export function bindRoute(schemaInput: any, routeParams: Record<string, string | undefined>): any {
+  if (isStandardSchema(schemaInput)) return validateStandardSchema(schemaInput, routeParams, 'route');
+  const descriptor = isObjectDescriptor(schemaInput) ? schemaInput : undefined;
+  const schema: BindingSchema = descriptor ? descriptor.schema : schemaInput;
   const errors: BindingErrorEntry[] = [];
-  const result: Record<string, any> = {};
-
+  const result: Record<string, any> = descriptor?.unknownProperties === 'passthrough' ? { ...routeParams } : {};
+  const known = new Set(Object.keys(schema));
   for (const [key, field] of Object.entries(schema)) {
-    const meta = inspectField(field);
-
-    if (meta.isArray) {
-      errors.push({
-        source: 'route',
-        path: key,
-        message: `Array binding is not supported for route parameters`,
-      });
+    let current: any = field;
+    let optional = false;
+    let nullable = false;
+    while (isOptional(current) || isNullable(current)) {
+      if (isOptional(current)) optional = true;
+      if (isNullable(current)) nullable = true;
+      current = current.inner;
+    }
+    const raw = routeParams[key];
+    if (raw === undefined || raw === '') {
+      if (!optional) errors.push({ source: 'route', path: key, code: 'required', message: `Route parameter '${key}' is required` });
       continue;
     }
-
-    const rawValue = routeParams[key];
-    const exists = rawValue !== undefined && rawValue !== '';
-
-    if (!exists) {
-      if (!meta.isOptional) {
-        errors.push({
-          source: 'route',
-          path: key,
-          message: `Route parameter '${key}' is required`,
-        });
-      }
+    if (isArrayDescriptor(current)) {
+      errors.push({ source: 'route', path: key, code: 'unsupported_type', message: 'Array binding is not supported for route parameters' });
       continue;
     }
-
-    if (rawValue === 'null' && meta.isNullable) {
-      result[key] = null;
-      continue;
-    }
-
-    const parsed = parseRouteScalar(meta.innerType, rawValue, key);
-    if (parsed.success) {
-      result[key] = parsed.value;
-    } else {
-      errors.push({
-        source: 'route',
-        path: key,
-        message: parsed.error,
-      });
+    if (nullable && raw === 'null') { result[key] = null; continue; }
+    const parsed = parseTextField(current, raw, key, 'route');
+    if (parsed.success) result[key] = parsed.value;
+    else errors.push({ source: 'route', path: key, code: parsed.code, message: parsed.error });
+  }
+  if (descriptor?.unknownProperties !== 'passthrough') {
+    for (const key of Object.keys(routeParams)) {
+      if (!known.has(key)) errors.push({ source: 'route', path: key, code: 'unknown_key', message: `Unknown route parameter '${key}'` });
     }
   }
-
-  if (errors.length > 0) {
-    throw new RequestBindingException(errors);
-  }
-
-  return result as Infer<T>;
-}
-
-function parseRouteScalar(
-  type: any,
-  value: string,
-  path: string,
-): { success: true; value: any } | { success: false; error: string } {
-  if (type === String) {
-    return { success: true, value };
-  }
-
-  if (type === Number) {
-    const num = parseStringNumber(value);
-    if (!num.success) {
-      return { success: false, error: `Must be a valid number, received '${value}'` };
-    }
-    return { success: true, value: num.value };
-  }
-
-  if (type === Boolean) {
-    const bool = parseStringBoolean(value);
-    if (!bool.success) {
-      return { success: false, error: `Must be a boolean ('true' or 'false'), received '${value}'` };
-    }
-    return { success: true, value: bool.value };
-  }
-
-  if (type === Date) {
-    const parsedDate = parseIso8601Date(value);
-    if (!parsedDate.success) {
-      return { success: false, error: parsedDate.error };
-    }
-    return { success: true, value: parsedDate.value };
-  }
-
-  return { success: false, error: `Unsupported schema type for route parameter '${path}'` };
+  if (errors.length) throw new RequestBindingException(errors);
+  return result;
 }

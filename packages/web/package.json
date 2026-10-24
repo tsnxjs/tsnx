@@ -1,6 +1,6 @@
 {
   "name": "@tsnx/web",
-  "version": "1.3.2",
+  "version": "2.0.0-rc.1",
   "description": "TSNX Web API Foundation - HTTP server, routing, middleware pipeline, and request-scoped lifecycle",
   "license": "MIT",
   "type": "module",
@@ -33,6 +33,7 @@
     "test": "node ../../scripts/test-runner.js"
   },
   "dependencies": {
+    "@standard-schema/spec": "^1.1.0",
     "@tsnx/hosting": "workspace:*",
     "@types/node": "^22.13.9"
   },

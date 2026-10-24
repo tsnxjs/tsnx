@@ -2,21 +2,274 @@ import assert from 'node:assert/strict';
 import { describe, it, afterEach } from 'node:test';
 import {
   Infer,
+  InferDescriptors,
   RequestBindingException,
   Results,
   WebApplication,
   array,
   bindBody,
+  body,
   bindQuery,
   bindRoute,
+  header,
+  discriminatedUnion,
+  enumeration,
+  integer,
+  isoDate,
+  literal,
   nullable,
   optional,
+  passthroughObject,
   parseIso8601Date,
   parseStringBoolean,
   parseStringNumber,
+  validateStandardSchema,
 } from '../index.js';
 
 describe('HTTP Request Binding - Primitives & Modifiers', () => {
+  it('parses enum, literal, strict object, and discriminated union with inferred branch types', () => {
+    enum ShippingMode {
+      Free = 'free',
+      Flat = 'flat',
+    }
+    enum NumericState {
+      Draft,
+      Active,
+    }
+
+    const ShippingSchema = discriminatedUnion('mode', [
+      { mode: literal(ShippingMode.Free) },
+      { mode: literal(ShippingMode.Flat), amount: Number },
+    ] as const);
+    const RequestSchema = {
+      status: enumeration(ShippingMode),
+      state: enumeration(NumericState),
+      method: literal('COD'),
+      name: String,
+      shipping: ShippingSchema,
+      ids: array(String),
+    };
+
+    type Request = Infer<typeof RequestSchema>;
+    const parsed: Request = bindBody(RequestSchema, {
+      status: 'flat',
+      state: 1,
+      method: 'COD',
+      name: '  Example  ',
+      shipping: { mode: 'flat', amount: 250 },
+      ids: ['  a  '],
+    });
+
+    const inferredStatus: ShippingMode = parsed.status;
+    const inferredName: string = parsed.name;
+    if (parsed.shipping.mode === ShippingMode.Flat) {
+      const inferredAmount: number = parsed.shipping.amount;
+      assert.equal(inferredAmount, 250);
+    }
+    // @ts-expect-error enum values are checked in the inferred output type
+    const invalidStatus: Request['status'] = 'unknown';
+    void invalidStatus;
+
+    assert.equal(inferredStatus, ShippingMode.Flat);
+    assert.equal(parsed.state, NumericState.Active);
+    assert.equal(inferredName, '  Example  ');
+    assert.deepEqual(parsed.ids, ['  a  ']);
+
+    assert.throws(
+      () => bindBody(RequestSchema, {
+        status: 'unknown',
+        state: 'Active',
+        method: 'TRANSFER',
+        name: ' x ',
+        shipping: { mode: 'free', amount: 100 },
+        ids: [1],
+        extra: true,
+      }),
+      (error: unknown) => {
+        assert.ok(error instanceof RequestBindingException);
+        assert.ok(error.entries.some((entry) => entry.path === 'status'));
+        assert.ok(error.entries.some((entry) => entry.path === 'state'));
+        assert.ok(error.entries.some((entry) => entry.path === 'method'));
+        assert.ok(error.entries.some((entry) => entry.path === 'shipping.amount'));
+        assert.ok(error.entries.some((entry) => entry.path === 'shipping.amount'));
+        assert.ok(error.entries.some((entry) => entry.path === 'ids[0]'));
+        assert.ok(error.entries.some((entry) => entry.path === 'extra'));
+        return true;
+      },
+    );
+  });
+
+  it('rejects unknown keys by default and supports explicit passthrough', () => {
+    const Schema = { name: String };
+    assert.throws(() => bindBody(Schema, { name: 'warehouse', legacy: true }), (error: unknown) => {
+      assert.ok(error instanceof RequestBindingException);
+      assert.deepEqual(error.entries.map(({ path, code }) => ({ path, code })), [{ path: 'legacy', code: 'unknown_key' }]);
+      return true;
+    });
+    assert.deepEqual(bindBody(passthroughObject(Schema), { name: 'warehouse', legacy: true }), {
+      name: 'warehouse', legacy: true,
+    });
+  });
+
+  it('rejects branch-inapplicable fields and accumulates deeply nested errors with stable paths', () => {
+    const Shipping = discriminatedUnion('mode', [
+      { mode: literal('free') },
+      { mode: literal('flat'), amount: Number },
+    ] as const);
+    assert.throws(() => bindBody({ shipping: Shipping }, {
+      shipping: { mode: 'free', discount: { amount: 2 } },
+    }), (error: unknown) => {
+      assert.ok(error instanceof RequestBindingException);
+      assert.ok(error.entries.some((entry) => entry.path === 'shipping.discount' && entry.code === 'unknown_key'));
+      return true;
+    });
+
+    const Catalog = { catalog: { variants: array({ pricing: { sale: Number } }) } };
+    assert.throws(() => bindBody(Catalog, {
+      catalog: { variants: [{ pricing: { sale: 'bad' } }, { pricing: { sale: 'bad' } }, { pricing: { sale: 'bad' } }] },
+    }), (error: unknown) => {
+      assert.ok(error instanceof RequestBindingException);
+      assert.deepEqual(error.entries.map((entry) => entry.path), [
+        'catalog.variants[0].pricing.sale',
+        'catalog.variants[1].pricing.sale',
+        'catalog.variants[2].pricing.sale',
+      ]);
+      assert.ok(error.entries.every((entry) => entry.code === 'invalid_type'));
+      return true;
+    });
+  });
+
+  it('accepts Standard Schema as a single parsing source and maps issues to binding errors', async () => {
+    const StandardNameSchema = {
+      '~standard': {
+        version: 1 as const,
+        vendor: 'tsnx-test',
+        validate(value: unknown) {
+          if (typeof value === 'object' && value !== null && 'name' in value && typeof value.name === 'string') {
+            return { value: { name: value.name } };
+          }
+          return { issues: [{ message: 'Name must be text', path: [{ key: 'name' }] }] };
+        },
+      },
+    };
+    const descriptor = body(StandardNameSchema);
+    type StandardOutput = InferDescriptors<[typeof descriptor]>[0];
+    const outputTypeCheck: StandardOutput = { name: 'typed' };
+    // @ts-expect-error Standard Schema output is inferred from its successful parse result.
+    const invalidOutputType: StandardOutput = { name: 123 };
+    void outputTypeCheck;
+    void invalidOutputType;
+
+    assert.deepEqual(await validateStandardSchema(StandardNameSchema, { name: 'typed' }, 'body'), { name: 'typed' });
+    assert.deepEqual(await validateStandardSchema(StandardNameSchema, { name: 'typed', extra: true }, 'body'), { name: 'typed' });
+    await assert.rejects(
+      validateStandardSchema(StandardNameSchema, { name: 123 }, 'body'),
+      (error: unknown) => {
+        assert.ok(error instanceof RequestBindingException);
+        assert.deepEqual(error.entries.map(({ path, code, message }) => ({ path, code, message })), [
+          { path: 'name', code: 'schema_validation', message: 'Name must be text' },
+        ]);
+        return true;
+      },
+    );
+  });
+
+  it('keeps native and Standard Schema issue shapes aligned for equivalent invalid input', async () => {
+    const input = { amount: 'not-a-number' };
+    let nativeError: unknown;
+    try {
+      bindBody({ amount: Number }, input);
+    } catch (error) {
+      nativeError = error;
+    }
+    const standardSchema = {
+      '~standard': {
+        version: 1 as const,
+        vendor: 'tsnx-contract-test',
+        validate(value: unknown) {
+          const amount = (value as { amount?: unknown }).amount;
+          return typeof amount === 'number'
+            ? { value: { amount } }
+            : { issues: [{ message: 'Expected a number', path: ['amount'] }] };
+        },
+      },
+    };
+    const validInput = { amount: 12 };
+    assert.deepEqual(bindBody({ amount: Number }, validInput), validInput);
+    assert.deepEqual(await validateStandardSchema(standardSchema, validInput, 'body'), validInput);
+    let standardError: unknown;
+    try {
+      await validateStandardSchema(standardSchema, input, 'body');
+    } catch (error) {
+      standardError = error;
+    }
+    assert.ok(nativeError instanceof RequestBindingException);
+    assert.ok(standardError instanceof RequestBindingException);
+    const publicShape = (error: RequestBindingException) => (error.toProblemDetails() as any).issues.map(({ path, message }: { path: string; message: string }) => ({ path, message }));
+    assert.deepEqual(publicShape(nativeError), [{ path: 'amount', message: 'Must be a number, received string' }]);
+    assert.deepEqual(publicShape(standardError), [{ path: 'amount', message: 'Expected a number' }]);
+    assert.deepEqual(Object.keys((nativeError.toProblemDetails() as any).issues[0]).sort(), ['code', 'message', 'path']);
+    assert.deepEqual(Object.keys((standardError.toProblemDetails() as any).issues[0]).sort(), ['code', 'message', 'path']);
+  });
+
+  it('documents the native and Standard Schema unknown-key and coercion boundary', async () => {
+    assert.throws(() => bindBody({ amount: Number }, { amount: '12' }), (error: unknown) => {
+      assert.ok(error instanceof RequestBindingException);
+      assert.equal(error.entries[0].code, 'invalid_type');
+      return true;
+    });
+
+    const TransformingStandardSchema = {
+      '~standard': {
+        version: 1 as const,
+        vendor: 'tsnx-contract-test',
+        validate(value: unknown) {
+          const input = value as { amount?: unknown; extra?: unknown };
+          const amount = typeof input.amount === 'string' ? Number(input.amount) : input.amount;
+          if (typeof amount === 'number' && Number.isFinite(amount)) return { value: { amount } };
+          return { issues: [{ message: 'Expected a number', path: ['amount'] }] };
+        },
+      },
+    };
+    assert.deepEqual(await validateStandardSchema(TransformingStandardSchema, { amount: '12', extra: 'discarded' }, 'body'), { amount: 12 });
+    assert.throws(() => bindRoute({ id: String }, { id: '1', extra: 'unexpected' }), (error: unknown) => {
+      assert.ok(error instanceof RequestBindingException);
+      assert.deepEqual(error.entries.map(({ path, code }) => ({ path, code })), [{ path: 'extra', code: 'unknown_key' }]);
+      return true;
+    });
+  });
+
+  it('uses Standard Schema consistently for query, route, and header inputs', async () => {
+    const PositiveNumber = {
+      '~standard': {
+        version: 1 as const,
+        vendor: 'tsnx-test',
+        async validate(value: unknown) {
+          const raw = typeof value === 'object' && value !== null && 'value' in value ? value.value : value;
+          const parsed = typeof raw === 'string' ? Number(raw) : Number.NaN;
+          if (Number.isSafeInteger(parsed) && parsed > 0) return { value: parsed };
+          return { issues: [{ message: 'Expected positive integer', path: ['value'] }] };
+        },
+      },
+    };
+
+    assert.equal(await bindQuery(PositiveNumber, new URLSearchParams('value=12')), 12);
+    assert.equal(await bindRoute(PositiveNumber, { value: '15' }), 15);
+    const headerDescriptor = header('X-Limit', PositiveNumber);
+    const parsedHeader = await headerDescriptor.resolveAsync({
+      request: { headers: { 'x-limit': '20' } },
+    } as any);
+    assert.equal(parsedHeader, 20);
+
+    await assert.rejects(bindQuery(PositiveNumber, new URLSearchParams('value=nope')), (error: unknown) => {
+      assert.ok(error instanceof RequestBindingException);
+      assert.deepEqual(error.entries.map(({ source, path, code }) => ({ source, path, code })), [
+        { source: 'query', path: 'value', code: 'schema_validation' },
+      ]);
+      return true;
+    });
+  });
+
   it('parses valid ISO 8601 dates and rejects invalid dates or formats', () => {
     // Valid ISO 8601
     const r1 = parseIso8601Date('2026-10-14T20:21:13Z');
@@ -65,7 +318,7 @@ describe('HTTP Request Binding - Primitives & Modifiers', () => {
     const TestSchema = {
       title: String,
       priority: Number,
-      dueDate: optional(Date),
+      dueDate: optional(isoDate()),
       assigneeId: nullable(String),
       description: optional(nullable(String)),
       tags: array(String),
@@ -128,7 +381,7 @@ describe('HTTP Request Binding - bindBody() (Strict JSON)', () => {
     title: String,
     priority: Number,
     isCompleted: Boolean,
-    dueDate: optional(Date),
+    dueDate: optional(isoDate()),
     assigneeEmail: nullable(String),
     notes: optional(nullable(String)),
     tags: optional(array(String)),
@@ -279,6 +532,36 @@ describe('HTTP Request Binding - bindBody() (Strict JSON)', () => {
 });
 
 describe('HTTP Request Binding - bindQuery() and bindRoute()', () => {
+  it('applies enum, literal, integer, and strict keys to text bindings', () => {
+    const schema = {
+      state: enumeration({ active: 'active', paused: 'paused' } as const),
+      mode: literal('COD'),
+      search: String,
+      page: integer(),
+      labels: array(String),
+    };
+
+    const result = bindQuery(
+      schema,
+      new URLSearchParams('state=active&mode=COD&search=%20HELLO%20&page=2&labels=%20One%20&labels=Two'),
+    );
+    assert.deepEqual(result, {
+      state: 'active',
+      mode: 'COD',
+      search: ' HELLO ',
+      page: 2,
+      labels: [' One ', 'Two'],
+    });
+
+    assert.throws(
+      () => bindQuery(schema, new URLSearchParams('state=active&mode=COD&search=ok&page=1&labels=one&ignored=x')),
+      (error: unknown) => error instanceof RequestBindingException && error.entries.some((entry) => entry.path === 'ignored'),
+    );
+
+    const routeSchema = { status: enumeration({ ready: 'ready', done: 'done' } as const), id: integer() };
+    assert.deepEqual(bindRoute(routeSchema, { status: 'ready', id: '9' }), { status: 'ready', id: 9 });
+  });
+
   it('binds query string with strict coercion and repeated array parameters', () => {
     const QuerySchema = {
       page: Number,
@@ -316,7 +599,7 @@ describe('HTTP Request Binding - bindQuery() and bindRoute()', () => {
   it('binds route parameters and rejects array descriptors on route parameters', () => {
     const RouteSchema = {
       id: Number,
-      date: optional(Date),
+      date: optional(isoDate()),
     };
 
     const routeParams = { id: '42', date: '2026-10-14' };
@@ -356,7 +639,7 @@ describe('HTTP Request Binding - WebApplication Integration & RFC 9457 Problem D
     const CreateTodoSchema = {
       title: String,
       priority: Number,
-      dueDate: optional(Date),
+      dueDate: optional(isoDate()),
     };
 
     const builder = WebApplication.createBuilder(['--Server:Port=0', '--Server:Host=127.0.0.1']);

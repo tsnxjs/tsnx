@@ -1,4 +1,4 @@
-import { WebApplication } from '@tsnx/web';
+import { WebApplication, isStandardSchema } from '@tsnx/web';
 import {
   OpenApiDocument,
   OpenApiInfo,
@@ -6,6 +6,7 @@ import {
   OpenApiParameter,
   OpenApiPathItem,
   OpenApiOptions,
+  OpenApiEndpointDocs,
   OpenApiResponse,
 } from './types.js';
 import {
@@ -90,22 +91,27 @@ export function generateOpenApiDocument(
     // Inspect argument descriptors
     for (const descriptor of endpoint.descriptors) {
       if (descriptor.source === 'route' && descriptor.schema) {
-        for (const [key, field] of Object.entries(descriptor.schema)) {
+        const routeSchema = isStandardSchema(descriptor.schema) ? convertSchema(descriptor.schema, options) : undefined;
+        const fields = routeSchema?.properties ?? descriptor.schema;
+        for (const [key, field] of Object.entries(fields)) {
           parameters.push({
             name: key,
             in: 'path',
             required: true,
-            schema: convertSchemaFieldToJsonSchema(field),
+            schema: routeSchema ? field : convertSchemaFieldToJsonSchema(field),
           });
           documentedPathParams.add(key);
         }
       } else if (descriptor.source === 'query' && descriptor.schema) {
-        for (const [key, field] of Object.entries(descriptor.schema)) {
+        const querySchema = isStandardSchema(descriptor.schema) ? convertSchema(descriptor.schema, options) : undefined;
+        const fields = querySchema?.properties ?? descriptor.schema;
+        const required = new Set<string>(querySchema?.required ?? []);
+        for (const [key, field] of Object.entries(fields)) {
           parameters.push({
             name: key,
             in: 'query',
-            required: !isOptional(field),
-            schema: convertSchemaFieldToJsonSchema(field),
+            required: querySchema ? required.has(key) : !isOptional(field),
+            schema: querySchema ? field : convertSchemaFieldToJsonSchema(field),
           });
         }
       } else if (descriptor.source === 'header' && descriptor.name) {
@@ -114,14 +120,14 @@ export function generateOpenApiDocument(
           name: descriptor.name,
           in: 'header',
           required: false,
-          schema: { type: 'string' },
+          schema: descriptor.schema ? convertSchema(descriptor.schema, options) : { type: 'string' },
         });
       } else if (descriptor.source === 'body' && descriptor.schema) {
         requestBody = {
           required: true,
           content: {
             'application/json': {
-              schema: convertToJsonSchema(descriptor.schema),
+              schema: convertSchema(descriptor.schema, options),
             },
           },
         };
@@ -170,7 +176,7 @@ export function generateOpenApiDocument(
         if (item.kind === 'produces') {
           if (item.schema) {
             contentMap[item.contentType] = {
-              schema: convertToJsonSchema(item.schema),
+              schema: convertSchema(item.schema, options),
             };
           } else {
             contentMap[item.contentType] = {};
@@ -200,6 +206,13 @@ export function generateOpenApiDocument(
       responses,
     };
 
+    const requestBodySchema = requestBody?.content?.['application/json']?.schema;
+    if (requestBodySchema) {
+      const documentedSchema = structuredClone(requestBodySchema);
+      requestBody.content['application/json'].schema = documentedSchema;
+      applyRequestBodyDocs(endpoint.metadata, documentedSchema);
+    }
+
     if (!paths[openApiPath]) {
       paths[openApiPath] = {};
     }
@@ -216,4 +229,72 @@ export function generateOpenApiDocument(
     paths: paths as Record<string, OpenApiPathItem>,
     tags: documentTags,
   };
+}
+
+function applyRequestBodyDocs(metadata: any, schema: any): void {
+  if (!schema) return;
+  const docs = metadata.getCustom('openApi.docs') as OpenApiEndpointDocs | undefined;
+  const properties = docs?.requestBody?.properties ?? {};
+  const legacyEnums = metadata.getCustom('openApi.enums') as Record<string, readonly (string | number)[]> | undefined;
+  const legacyExamples = metadata.getCustom('openApi.examples') as Record<string, unknown> | undefined;
+  const legacyOverrides = metadata.getCustom('openApi.schemaOverrides') as Record<string, Record<string, unknown>> | undefined;
+
+  for (const [path, values] of Object.entries(legacyEnums ?? {})) {
+    const target = resolveSchemaProperty(schema, path);
+    if (target) target.value.enum = [...values];
+  }
+  for (const [path, example] of Object.entries(legacyExamples ?? {})) {
+    const target = resolveSchemaProperty(schema, path);
+    if (target) target.value.example = example;
+  }
+  for (const [path, override] of Object.entries(legacyOverrides ?? {})) {
+    const target = resolveSchemaProperty(schema, path);
+    if (target) target.parent.properties[target.key] = override;
+  }
+
+  for (const [path, propertyDocs] of Object.entries(properties)) {
+    const target = resolveSchemaProperty(schema, path);
+    if (!target) continue;
+    if (propertyDocs.schema) target.parent.properties[target.key] = propertyDocs.schema;
+    else {
+      if (propertyDocs.enum) target.value.enum = [...propertyDocs.enum];
+      if ('example' in propertyDocs) target.value.example = propertyDocs.example;
+    }
+  }
+}
+
+function resolveSchemaProperty(root: any, path: string): { parent: any; key: string; value: any } | undefined {
+  const tokens = path.match(/[^.[\]]+|\[\d*\]/g) ?? [];
+  if (!tokens.length) return undefined;
+  let current = root;
+  for (let index = 0; index < tokens.length; index++) {
+    const token = tokens[index];
+    if (token.startsWith('[')) {
+      if (!current?.items) return undefined;
+      current = current.items;
+      continue;
+    }
+    const property = findSchemaProperty(current, token);
+    if (!property) return undefined;
+    if (index === tokens.length - 1) return property;
+    current = property.value;
+  }
+  return undefined;
+}
+
+function findSchemaProperty(schema: any, key: string): { parent: any; key: string; value: any } | undefined {
+  if (schema?.properties?.[key]) return { parent: schema, key, value: schema.properties[key] };
+  for (const variant of schema?.oneOf ?? []) {
+    const property = findSchemaProperty(variant, key);
+    if (property) return property;
+  }
+  return undefined;
+}
+
+function convertSchema(schema: unknown, options: OpenApiOptions): any {
+  for (const adapter of options.schemaAdapters ?? []) {
+    const converted = adapter(schema);
+    if (converted !== undefined) return converted;
+  }
+  return convertToJsonSchema(schema);
 }

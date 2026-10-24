@@ -23,7 +23,7 @@ export type Doc = {
 };
 
 export const repository = "https://github.com/tsnxjs/tsnx";
-export const version = "1.3.0";
+export const version = "2.0.0-rc.1";
 
 export const helloExample = "import { WebApplication, Results } from '@tsnx/web';\n\nconst builder = WebApplication.createBuilder();\nconst app = builder.build();\n\napp.mapGet('/hello', () => {\n  return Results.json({ message: 'Hello, TSNX!' });\n});\n\nawait app.run();";
 
@@ -92,7 +92,7 @@ export const docs: Doc[] = [
         "id": "familiar-by-design",
         "title": "Familiar by design",
         "text": "If you know ASP.NET, the architecture will feel familiar. TSNX uses JavaScript primitives where they fit: promises for asynchronous work, AbortSignal for cancellation, and explicit schema descriptors for runtime validation. TSNX adapts these concepts; it does not promise complete ASP.NET API parity.",
-        "note": "You are reading the TSNX v1.3.0 documentation. TSNX is stable and production-ready."
+        "note": "You are reading the TSNX v2.0.0 release candidate documentation. Review the migration notes before upgrading production applications."
       },
       {
         "id": "request-journey",
@@ -140,8 +140,8 @@ export const docs: Doc[] = [
       {
         "id": "install-the-cli",
         "title": "Install the CLI",
-        "text": "Install the stable TSNX CLI globally using npm or pnpm.",
-        "code": "npm install -g @tsnx/cli@1.3.0\ntsnx --version\ntsnx --help",
+        "text": "Install the TSNX 2.0 release candidate globally using npm or pnpm. It is published on the rc dist-tag.",
+        "code": "npm install -g @tsnx/cli@2.0.0-rc.1\ntsnx --version\ntsnx --help",
         "language": "bash",
         "filename": "Terminal"
       },
@@ -157,7 +157,7 @@ export const docs: Doc[] = [
         "id": "existing-project",
         "title": "Add to an existing project",
         "text": "You can also use the HTTP and hosting packages directly in an existing TypeScript application. Compile and run your application with your existing ESM tooling.",
-        "code": "npm install @tsnx/web@1.3.0 @tsnx/hosting@1.3.0",
+        "code": "npm install @tsnx/web@2.0.0-rc.1 @tsnx/hosting@2.0.0-rc.1",
         "language": "bash",
         "filename": "Terminal"
       },
@@ -361,7 +361,7 @@ export const docs: Doc[] = [
         "id": "package-metadata",
         "title": "Package configuration",
         "text": "Use package.json for the package name, dependencies, entry point, and TSNX metadata. Keep tsconfig.json focused on TypeScript compiler settings.",
-        "code": "{\n  \"name\": \"@acme/host\",\n  \"version\": \"0.1.0\",\n  \"type\": \"module\",\n  \"private\": true,\n  \"main\": \"./dist/main.js\",\n  \"tsnx\": {\n    \"name\": \"Host\",\n    \"type\": \"webapi\"\n  },\n  \"dependencies\": {\n    \"@acme/inventory\": \"workspace:*\",\n    \"@tsnx/web\": \"1.3.0\"\n  },\n  \"devDependencies\": {\n    \"@types/node\": \"^22.13.9\"\n  }\n}",
+        "code": "{\n  \"name\": \"@acme/host\",\n  \"version\": \"0.1.0\",\n  \"type\": \"module\",\n  \"private\": true,\n  \"main\": \"./dist/main.js\",\n  \"tsnx\": {\n    \"name\": \"Host\",\n    \"type\": \"webapi\"\n  },\n  \"dependencies\": {\n    \"@acme/inventory\": \"workspace:*\",\n    \"@tsnx/web\": \"2.0.0-rc.1\"\n  },\n  \"devDependencies\": {\n    \"@types/node\": \"^22.13.9\"\n  }\n}",
         "language": "json",
         "filename": "Entrypoints/Host/package.json",
         "note": "Library projects use src/index.ts with main ./dist/index.js and types ./dist/index.d.ts in package.json. TypeScript references control build order; package dependencies make imports available at runtime."
@@ -777,9 +777,16 @@ export const docs: Doc[] = [
       {
         "id": "schema-shapes",
         "title": "Compose nested schemas",
-        "text": "Schemas support String, Number, Boolean, Date, nested objects, array(), optional(), and nullable(). Infer<typeof Schema> derives the static type. Optional permits a missing property; nullable permits an explicit null value.",
+        "text": "Schemas support String, Number, Boolean, nested objects, array(), optional(), nullable(), and isoDate(). Infer<typeof Schema> derives the static type. Optional permits a missing property; nullable permits an explicit null value. Objects reject unknown keys unless passthroughObject() is selected.",
         "filename": "Schemas/WarehouseInput.ts",
-        "code": "import { array, optional, nullable, bindBody, type Infer } from '@tsnx/web';\n\nconst WarehouseSchema = {\n  name: String,\n  address: { city: String, postalCode: String },\n  tags: optional(array(String)),\n  openedAt: nullable(Date),\n};\n\ntype WarehouseInput = Infer<typeof WarehouseSchema>;\n\nconst input: WarehouseInput = bindBody(WarehouseSchema, {\n  name: 'Central',\n  address: { city: 'Jakarta', postalCode: '10110' },\n  openedAt: null,\n});"
+        "code": "import { array, isoDate, nullable, optional, type Infer, bindBody } from '@tsnx/web';\n\nconst WarehouseSchema = {\n  name: String,\n  address: { city: String, postalCode: String },\n  tags: optional(array(String)),\n  openedAt: nullable(isoDate()),\n};\n\ntype WarehouseInput = Infer<typeof WarehouseSchema>;\n\nconst input: WarehouseInput = bindBody(WarehouseSchema, {\n  name: 'Central',\n  address: { city: 'Jakarta', postalCode: '10110' },\n  openedAt: null,\n});"
+      },
+      {
+        "id": "strict-and-variant-schemas",
+        "title": "Enums, literals, and variants",
+        "text": "Use enumeration() and literal() for runtime value descriptors, and discriminatedUnion() for object variants selected by a discriminator. These descriptors define transport shape only; use fluentv or Standard Schema for constraints, transforms, and business validation.",
+        "filename": "Schemas/CreateProductRequest.ts",
+        "code": "import { array, discriminatedUnion, enumeration, integer, literal, type Infer } from '@tsnx/web';\n\nenum ShippingMode { Free = 'free', Flat = 'flat' }\n\nconst ShippingSchema = discriminatedUnion('mode', [\n  { mode: literal(ShippingMode.Free) },\n  { mode: literal(ShippingMode.Flat), amount: integer() },\n] as const);\n\nconst CreateProductSchema = {\n  status: enumeration({ Draft: 'draft', Active: 'active' } as const),\n  name: String,\n  shipping: ShippingSchema,\n  tags: array(String),\n};\n\ntype CreateProductRequest = Infer<typeof CreateProductSchema>;"
       },
       {
         "id": "source-specific-parsing",
@@ -805,7 +812,7 @@ export const docs: Doc[] = [
             ],
             [
               "Date",
-              "ISO date or date-time; date-only and missing-zone date-times use UTC"
+              "isoDate() explicitly parses ISO date or date-time; date-only and missing-zone date-times use UTC"
             ],
             [
               "Query array",
@@ -821,7 +828,7 @@ export const docs: Doc[] = [
             ],
             [
               "Unknown JSON properties",
-              "Omitted from the bound result"
+              "Rejected by default; passthroughObject() explicitly retains them"
             ]
           ]
         }
@@ -829,10 +836,10 @@ export const docs: Doc[] = [
       {
         "id": "binding-failures",
         "title": "Read binding errors",
-        "text": "A RequestBindingException carries entries with source, path, and message. The exception pipeline converts it to a 400 Problem Details response with an errors dictionary keyed by field path. JSON binding accepts application/json and application/*+json; incompatible or missing media types return 415.",
+        "text": "A RequestBindingException carries entries with source, path, code, and message. The exception pipeline converts it to a 400 Problem Details response with an issues array and errors dictionary keyed by field path. JSON binding accepts application/json and application/*+json; incompatible or missing media types return 415.",
         "paragraphs": [
           "Binding validates structure and primitive representation. It does not enforce string length, email format, positive quantities, uniqueness, or authorization. Add those rules in filters or application services.",
-          "Body binding only copies fields declared in the schema, rather than spreading the raw request into an entity. Unknown properties are ignored, not rejected. Select the fields your use case is allowed to change."
+          "Body binding copies only fields declared in the schema, and rejects unknown properties by default. Use passthroughObject() only when the endpoint explicitly needs to retain extra properties. Select the fields your use case is allowed to change."
         ]
       }
     ],
@@ -1203,6 +1210,48 @@ export const docs: Doc[] = [
     ]
   },
   {
+    "slug": "migrating-to-v2",
+    "title": "Migrate to TSNX 2.0",
+    "group": "Getting started",
+    "source": "docs/TYPE_DESCRIPTOR_SCOPE.md",
+    "description": "Prepare existing request schemas for the TSNX 2.0 release candidate.",
+    "sections": [
+      {
+        "id": "release-candidate",
+        "title": "Try the release candidate",
+        "text": "TSNX 2.0 is a major release candidate. Install matching package versions with the rc tag and test the migration in a branch before adopting it in production.",
+        "code": "npm install @tsnx/web@rc @tsnx/hosting@rc @tsnx/openapi@rc",
+        "language": "bash",
+        "filename": "Terminal"
+      },
+      {
+        "id": "strict-object-migration",
+        "title": "Unknown object fields are rejected",
+        "text": "Plain object binding schemas now reject undeclared keys and return a 400 binding error. This prevents input fields from being silently dropped. Use passthroughObject(schema) only when the endpoint intentionally retains unknown properties.",
+        "code": "import { body, passthroughObject } from '@tsnx/web';\n\nconst UpdateProfile = { displayName: String };\napp.mapPut('/profile', [body(passthroughObject(UpdateProfile))], updateProfile);"
+      },
+      {
+        "id": "explicit-descriptors",
+        "title": "Use explicit runtime descriptors",
+        "text": "String, Number, and Boolean remain supported as primitive descriptors. Use enumeration(), literal(), union(), or discriminatedUnion() when the contract depends on allowed values or variant-specific fields. The binding API is for request shape; use fluentv or Standard Schema for constraints and business rules.",
+        "code": "import { array, discriminatedUnion, enumeration, integer, literal, optional } from '@tsnx/web';\n\nenum Mode { Free = 'free', Flat = 'flat' }\nconst Shipping = discriminatedUnion('mode', [\n  { mode: literal(Mode.Free) },\n  { mode: literal(Mode.Flat), amount: integer(), discount: optional(Number) },\n] as const);\nconst CreateOrder = { status: enumeration({ Draft: 'draft', Active: 'active' } as const), shipping: Shipping, tags: array(String) };"
+      },
+      {
+        "id": "date-migration",
+        "title": "Replace Date constructor schemas",
+        "text": "Date is no longer inferred as a parsing descriptor. Replace Date fields with isoDate(); valid ISO input becomes a Date and invalid calendar dates produce a binding error. JSON strings are never implicitly converted to numbers or booleans.",
+        "code": "import { isoDate, optional } from '@tsnx/web';\n\nconst EventInput = { startsAt: isoDate(), endsAt: optional(isoDate()) };"
+      },
+      {
+        "id": "error-envelope-migration",
+        "title": "Read collected issues",
+        "text": "Binding now collects independent errors and exposes path, code, and message for each issue. RFC 9457 responses retain the errors dictionary and add an issues array. The stable path convention uses dots for properties and brackets for array indices.",
+        "code": "{\n  \"issues\": [\n    { \"path\": \"variants[1].price\", \"code\": \"invalid_type\", \"message\": \"Must be a number\" }\n  ]\n}"
+      }
+    ],
+    "related": ["http-context", "openapi"]
+  },
+  {
     "slug": "openapi",
     "title": "OpenAPI & Scalar",
     "group": "Build your API",
@@ -1213,7 +1262,7 @@ export const docs: Doc[] = [
         "id": "install-packages",
         "title": "Install the integrations",
         "text": "Add both integrations to the application. OpenAPI generates the document; Scalar serves the interactive reference.",
-        "code": "npm install @tsnx/openapi@1.0.2 @tsnx/scalar@1.0.2",
+        "code": "npm install @tsnx/openapi@2.0.0-rc.1 @tsnx/scalar@2.0.0-rc.1",
         "language": "bash",
         "filename": "Terminal"
       },
@@ -1236,6 +1285,20 @@ export const docs: Doc[] = [
         "text": "OpenAPI can inspect body(), query(), route(), and header() descriptors before a handler executes. An imperative ctx.request.bindBody call inside a handler is not discovered by static introspection. Undescribed path parameters fall back to strings.",
         "filename": "src/main.ts",
         "code": "import { WebApplication, Results, body, route } from '@tsnx/web';\nimport { mapOpenApi } from '@tsnx/openapi';\n\nconst app = WebApplication.createBuilder().build();\n\nconst Warehouse = { id: String, name: String };\n\napp.mapPut('/warehouses/:id', [route({ id: String }), body({ name: String })],\n  (path, input) => Results.ok({ id: path.id, ...input }))\n  .withName('UpdateWarehouse')\n  .withTags('Inventory')\n  .produces(200, Warehouse)\n  .producesProblem(400);\n\nmapOpenApi(app);"
+      },
+      {
+        "id": "openapi-endpoint-docs",
+        "title": "Add endpoint-specific OpenAPI details",
+        "text": "Use withOpenApiDocs() on the route builder for examples or exceptional schema overrides. Native enums and discriminated variants should come from TSNX descriptors so the OpenAPI contract and runtime parser stay aligned. Array paths use [] to address each item.",
+        "filename": "src/routes/items.ts",
+        "code": "import { WebApplication, Results, body, array, enumeration, literal } from '@tsnx/web';\nimport { mapOpenApi } from '@tsnx/openapi';\n\nenum ItemStatus { Draft = 'draft', Active = 'active' }\n\nconst CreateItem = {\n  status: enumeration(ItemStatus),\n  payment: { type: literal('COD') },\n  variants: array({ sku: String, price: Number }),\n};\n\nconst app = WebApplication.createBuilder().build();\n\napp.mapPost('/items', [body(CreateItem)], (input) => Results.created(input))\n  .withName('CreateItem')\n  .withOpenApiDocs({\n    requestBody: {\n      properties: {\n        'variants[].sku': { example: 'SKU-001' },\n        'variants[].price': { schema: { type: 'number', minimum: 0 } },\n      },\n    },\n  });\n\nmapOpenApi(app);"
+      },
+      {
+        "id": "external-schema-openapi",
+        "title": "Document external schemas",
+        "text": "A Standard Schema implementation controls parsing and validation. OpenAPI does not guess its shape; provide a schemaAdapters function to convert recognized external schemas to JSON Schema. Without an adapter, that schema is emitted as an unconstrained object schema.",
+        "code": "import { z } from 'zod';\n\nmapOpenApi(app, {\n  schemaAdapters: [\n    (schema) => schema === CreateItemZodSchema\n      ? z.toJSONSchema(CreateItemZodSchema)\n      : undefined,\n  ],\n});",
+        "filename": "src/main.ts"
       },
       {
         "id": "metadata-vs-enforcement",
@@ -2448,7 +2511,7 @@ export const docs: Doc[] = [
       {
         "id": "documentation-scope",
         "title": "Scope of these guides",
-        "text": "These guides describe the stable TSNX framework repository and package ecosystem (v1.3.0). Examples are checked against its exported TypeScript declarations and verified with end-to-end regression suites.",
+        "text": "These guides describe the TSNX 2.0.0 release candidate package ecosystem. Examples are checked against exported TypeScript declarations and regression suites.",
         "paragraphs": [
           "Implementation links and regression-test references accompany the guides. Source behavior takes precedence over older README examples, architecture proposals, and legacy samples. Where a feature is application-owned, the guide says so."
         ]

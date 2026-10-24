@@ -4,7 +4,7 @@ TSNX menyediakan fondasi Web API enterprise, hosting terstruktur, dependency inj
 
 ## 1. Type Erasure & Runtime Model Binding
 - **Karakteristik**: TypeScript menghapus tipe statis saat kompilasi (*type erasure*). Generic types dan interface tidak dapat diinspeksi saat runtime tanpa skema runtime eksplisit.
-- **Perilaku TSNX**: Validasi dan model binding request body (`bindBody`), query (`bindQuery`), dan route (`bindRoute`) menggunakan runtime schema descriptors (`array()`, `nullable()`, `optional()`). Penggunaan `Infer<typeof Schema>` memberikan inferensi tipe statis rekursif yang sepenuhnya sinkron dengan validasi runtime (*fail-closed*).
+- **Perilaku TSNX**: Model binding mem-parse kontrak struktural melalui descriptor runtime. Batas API dan kebijakan penambahan fitur dijelaskan di [`TYPE_DESCRIPTOR_SCOPE.md`](./TYPE_DESCRIPTOR_SCOPE.md). Validasi aplikasi/domain tetap menjadi tanggung jawab validator seperti `fluentv`.
 
 ## 2. Cancellation: Asynchronous Cooperative Flow
 - **Karakteristik**: Standar pembatalan operasi asinkron modern di JavaScript/TypeScript bertumpu pada Web Standards.

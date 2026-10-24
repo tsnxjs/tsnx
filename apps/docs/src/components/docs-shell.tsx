@@ -76,7 +76,7 @@ function SidebarNavigation({ close }: { close?: () => void }) {
   return <>
     <Link href="/docs/quick-start" className="sidebar-start" onClick={close}><span className="sidebar-start-icon"><Terminal size={16} /></span><span>Start building<small>Your first API in minutes</small></span><ArrowRight size={14} /></Link>
     <nav aria-label="Documentation">{groups.map((group) => <div className="nav-group" key={group}><p>{group}</p>{docs.filter((doc) => doc.group === group).map((doc) => <Link key={doc.slug} href={docHref(doc.slug)} onClick={close} aria-current={pathname === docHref(doc.slug) || pathname === `${docHref(doc.slug)}/` || pathname === "/" && doc.slug === "introduction" ? "page" : undefined} className="sidebar-link">{doc.title}{doc.slug === "quick-start" && <span className="nav-new">START</span>}</Link>)}</div>)}</nav>
-    <div className="sidebar-bottom"><span className="flex items-center gap-2"><span className="status-dot" /> Stable release</span><span>v{version}</span></div>
+    <div className="sidebar-bottom"><span className="flex items-center gap-2"><span className="status-dot" /> Release candidate</span><span>v{version}</span></div>
   </>;
 }
 
@@ -90,7 +90,7 @@ export function DocsShell({ children }: { children: React.ReactNode }) {
   return <>
     <a className="skip-link" href="#main-content">Skip to content</a>
     <header className="site-header"><div className="header-inner">
-      <MobileNavigation /><Brand /><span className="header-divider" /><span className="header-docs">Documentation</span><span className="version-badge">v{version} <span>Stable</span></span>
+      <MobileNavigation /><Brand /><span className="header-divider" /><span className="header-docs">Documentation</span><span className="version-badge">v{version} <span>RC</span></span>
       <div className="header-right"><SearchDocs /><a className="header-github" href={repository} target="_blank" rel="noreferrer" aria-label="TSNX on GitHub"><Github size={19} /></a><span className="header-divider secondary" /><ThemeToggle /></div>
     </div></header>
     <div className="docs-layout"><aside className="desktop-sidebar"><SidebarNavigation /></aside><div key={pathname} className="page-container">{children}</div></div>
