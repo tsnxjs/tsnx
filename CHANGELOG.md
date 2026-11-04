@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-11-04
+
+### Added
+- **@tsnx/auth Subsystem**: Added enterprise Authentication and Policy-Based Authorization subsystem modeled after ASP.NET Core (`Microsoft.AspNetCore.Authentication` & `Microsoft.AspNetCore.Authorization`).
+  - **Resource Server Gatekeeper**: Focuses exclusively on stateless credential verification and policy evaluation for external Identity Providers (Keycloak, Auth0, Supabase, Okta, Firebase, AWS Cognito, Entra ID) without user database or password hashing scope creep.
+  - **Claims-Based Identity**: Standard `ClaimsPrincipal`, `ClaimsIdentity`, and `Claim` primitives attached directly to `ctx.user` on `HttpContext`.
+  - **Web Crypto JWT Verifier**: Pure Web Standards Web Crypto API (`SubtleCrypto`) token verification supporting HS256, RS256, and ES256 with zero native compiled binary dependencies.
+  - **Remote JWKS Rotation**: Built-in JSON Web Key Set client with configurable in-memory caching and automatic public key rotation.
+  - **Policy-Based Authorization**: Declarative authorization engine supporting `requireRole()`, `requireClaim()`, and asynchronous custom assertions (`requireAssertion()`).
+  - **Endpoint Extensions**: Fluent `.requireAuthorization(policyName?)` and `.allowAnonymous()` on `RouteHandlerBuilder` and `RouteGroupBuilder`.
+  - **Pipeline Wiring**: Streamlined setup via `addAuthentication()`, `addJwtBearer()`, `addApiKey()`, `addAuthorization()`, and `app.useAuth()`.
+  - **RFC 9457 Problem Details**: Standardized `401 Unauthorized` and `403 Forbidden` responses.
+- **OpenAPI 3.1 Security Integration**:
+  - `@tsnx/openapi` automatically inspects route authorization metadata and emits `security: [{ BearerAuth: [] }]`.
+  - Auto-populates `components.securitySchemes.BearerAuth` in the generated OpenAPI document.
+  - Automatically emits `401 Unauthorized` and `403 Forbidden` Problem Details responses on protected endpoints.
+  - Honors route-level `.allowAnonymous()` overrides on protected route groups by emitting `security: []`.
+- **Documentation**:
+  - Added complete Authentication & Authorization guide in the official documentation app.
+
 ## [2.0.0] - 2026-11-04
 
 ### Added

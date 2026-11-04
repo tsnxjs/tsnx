@@ -85,16 +85,17 @@ await app.run();
 
 | Package | Version | Description |
 |---|---|---|
-| [`@tsnx/web`](./packages/web) | `2.0.0` | Native HTTP Web API engine, onion middleware, route matching, and request-scoped DI |
-| [`@tsnx/auth`](./packages/auth) | `2.0.0` | Claims-based identity, JWT Bearer, JWKS rotation, and policy-based authorization |
-| [`@tsnx/openapi`](./packages/openapi) | `2.0.0` | Automatic OpenAPI 3.1 specification generation from route definitions |
-| [`@tsnx/scalar`](./packages/scalar) | `2.0.0` | Embedded interactive Scalar API reference documentation endpoint |
-| [`@tsnx/hosting`](./packages/hosting) | `2.0.0` | Application hosting foundation, Dependency Injection, Configuration, and Hosted Services |
-| [`@tsnx/hosting-abstractions`](./packages/hosting-abstractions) | `2.0.0` | Zero-dependency contracts for DI (`IServiceCollection`), Configuration, Logging, and Lifecycle |
-| [`@tsnx/core`](./packages/core) | `2.0.0` | Native TypeScript project discovery, workspace graph, and manifest parsing |
-| [`@tsnx/build`](./packages/build) | `2.0.0` | TypeScript compiler orchestrator, configuration generator, and package synchronization |
-| [`@tsnx/cli`](./apps/cli) | `2.0.0` | Unified developer CLI (`tsnx create`, `build`, `run`, `test`, `watch`, `ref`, `workspace`) |
-| [`@tsnx/testing`](./packages/testing) | `2.0.0` | Integration testing utilities, `WebApplicationFactory`, and HTTP test client |
+| [`@tsnx/web`](./packages/web) | `2.1.0` | Native HTTP Web API engine, onion middleware, route matching, and request-scoped DI |
+| [`@tsnx/auth`](./packages/auth) | `2.1.0` | Claims-based identity, JWT Bearer, JWKS rotation, and policy-based authorization |
+| [`@tsnx/openapi`](./packages/openapi) | `2.1.0` | Automatic OpenAPI 3.1 specification generation from route definitions |
+| [`@tsnx/scalar`](./packages/scalar) | `2.1.0` | Embedded interactive Scalar API reference documentation endpoint |
+| [`@tsnx/hosting`](./packages/hosting) | `2.1.0` | Application hosting foundation, Dependency Injection, Configuration, and Hosted Services |
+| [`@tsnx/hosting-abstractions`](./packages/hosting-abstractions) | `2.1.0` | Zero-dependency contracts for DI (`IServiceCollection`), Configuration, Logging, and Lifecycle |
+| [`@tsnx/core`](./packages/core) | `2.1.0` | Native TypeScript project discovery, workspace graph, and manifest parsing |
+| [`@tsnx/build`](./packages/build) | `2.1.0` | TypeScript compiler orchestrator, configuration generator, and package synchronization |
+| [`@tsnx/cli`](./apps/cli) | `2.1.0` | Unified developer CLI (`tsnx create`, `build`, `run`, `test`, `watch`, `ref`, `workspace`) |
+| [`@tsnx/testing`](./packages/testing) | `2.1.0` | Integration testing utilities, `WebApplicationFactory`, and HTTP test client |
+| [`@tsnx/mediator`](./packages/mediator) | `2.1.0` | In-process mediator pipeline, request/response dispatcher, and event broadcasting |
 
 ---
 
