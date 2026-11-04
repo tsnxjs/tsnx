@@ -1,82 +1,550 @@
 import Link from "next/link";
+import { codeToHtml } from "shiki";
 import {
-  ArrowRight, ArrowUpRight, Blocks, Braces, ChevronRight, FileCode2,
-  GitBranch, Github, Layers3, Network, Plug, Route, Terminal, Workflow,
+  ArrowRight,
+  ArrowUpRight,
+  Boxes,
+  CheckCircle2,
+  ChevronRight,
+  Code2,
+  Cpu,
+  FileCode2,
+  FolderTree,
+  GitBranch,
+  Github,
+  Layers,
+  Network,
+  ShieldCheck,
+  Sparkles,
+  Terminal,
+  Workflow,
+  Zap,
 } from "lucide-react";
-import { Brand, CopyButton, LandingHeader } from "@/components/docs-shell";
+import { Brand, LandingHeader } from "@/components/docs-shell";
 import { Button } from "@/components/ui/button";
-import { CodeBlock } from "@/components/code-block";
+import { FeatureExplorer } from "@/components/feature-explorer";
+import { LandingInstallBar } from "@/components/landing-install-bar";
 import { repository, version } from "@/lib/docs";
-import { installCommand, landingExample, workspaceTree } from "@/lib/landing";
+import {
+  featureShowcases,
+  frameworkStats,
+  workspaceTree,
+} from "@/lib/landing";
 
-const features = [
-  { icon: Route, title: "Routes that read like your API.", text: "Map endpoints, compose middleware, and group related routes. Keep the HTTP contract close to the handler.", code: "app.mapGroup('/inventory')", href: "routing", label: "Routing & middleware" },
-  { icon: Braces, title: "Types meet the real request.", text: "Bind JSON, query strings, and route values with explicit runtime schemas and inferred TypeScript arguments.", code: "body({ name: String })", href: "declarative-binding", label: "Runtime model binding" },
-  { icon: Blocks, title: "The right service. The right scope.", text: "Typed tokens, explicit constructor dependencies, and singleton, scoped, or transient lifetimes. No decorators required.", code: "services.addScoped(Repository)", href: "dependency-injection", label: "Dependency injection" },
-  { icon: Plug, title: "Behavior you can compose.", text: "Inspect bound arguments, apply reusable validation, or short-circuit a handler with group and endpoint filters.", code: ".addEndpointFilter(validate)", href: "endpoint-filters", label: "Endpoint filters" },
-  { icon: Workflow, title: "A lifecycle you can follow.", text: "Coordinated startup and shutdown, request cancellation, explicit deadlines, and owned-resource disposal.", code: "ctx.request.signal", href: "lifecycle", label: "Hosting & lifecycle" },
-  { icon: FileCode2, title: "Your contracts, in the open.", text: "Generate OpenAPI 3.1 from descriptors and metadata. Add Scalar when you want an interactive API reference.", code: "mapOpenApi(app)", href: "openapi", label: "OpenAPI & Scalar" },
+const requestStages = [
+  { step: "01", name: "HTTP Request", detail: "Fast Node HTTP parser" },
+  { step: "02", name: "Middleware", detail: "Pipeline short-circuiting" },
+  { step: "03", name: "Route Match", detail: "Explicit radix mapping" },
+  { step: "04", name: "Model Binding", detail: "Schema parsing & args" },
+  { step: "05", name: "Handler & Filters", detail: "DI scoped execution" },
+  { step: "06", name: "HTTP Result", detail: "Standardized response" },
 ];
 
-const requestStages = ["HTTP request", "Middleware", "Routing", "Binding & filters", "Your handler", "HTTP result"];
+export async function LandingPage() {
+  // Pre-render syntax highlighted code on server for instantaneous client render
+  const renderedShowcases = await Promise.all(
+    featureShowcases.map(async (feat) => ({
+      ...feat,
+      codeHtml: await codeToHtml(feat.code, {
+        lang: feat.language,
+        themes: { light: "github-light", dark: "github-dark" },
+      }),
+    }))
+  );
 
-export function LandingPage() {
-  return <div className="landing">
-    <a className="skip-link" href="#main-content">Skip to content</a>
-    <LandingHeader />
-    <main id="main-content">
-      <section className="landing-hero" aria-labelledby="landing-title">
-        <div className="landing-hero-grid" aria-hidden="true" />
-        <div className="landing-container landing-hero-content">
-          <div className="landing-hero-copy">
-            <Link className="landing-release-link" href="/docs/migrating-to-v2"><span className="status-dot" /> v{version}<span className="release-divider" /> Latest Release <ArrowRight size={13} /></Link>
-            <p className="landing-eyebrow">THE TYPESCRIPT APPLICATION FRAMEWORK</p>
-            <h1 id="landing-title">Build with structure.<br /><span>Ship with confidence.</span></h1>
-            <p className="landing-hero-description">Familiar application architecture.<br />Native TypeScript. A foundation that grows with you.</p>
-            <p className="landing-hero-detail">A Web API framework and project system for Node.js, bringing explicit routing, dependency injection, and application hosting into one connected workflow.</p>
-            <div className="landing-hero-buttons">
-              <Button asChild><Link href="/docs/quick-start">Get started <ArrowRight /></Link></Button>
-              <Button variant="outline" asChild><a href={repository} target="_blank" rel="noreferrer"><Github /> View on GitHub <ArrowUpRight /></a></Button>
+  const workspaceHtml = await codeToHtml(workspaceTree, {
+    lang: "bash",
+    themes: { light: "github-light", dark: "github-dark" },
+  });
+
+  const cliQuickstart = `# Install CLI globally
+npm install -g @tsnx/cli
+
+# Scaffold a new Web API host
+tsnx create webapi Host
+
+# Run locally with hot reload
+cd Host && tsnx run`;
+
+  const cliQuickstartHtml = await codeToHtml(cliQuickstart, {
+    lang: "bash",
+    themes: { light: "github-light", dark: "github-dark" },
+  });
+
+  return (
+    <div className="landing-modern">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
+
+      {/* Floating Glassmorphic Navbar (NestJS & Next.js inspired) */}
+      <LandingHeader />
+
+      <main id="main-content">
+        {/* ========================================================================= */}
+        {/* HERO SECTION: Glowing Ambient Mesh + Huge Outline Logo + Centered Copy   */}
+        {/* ========================================================================= */}
+        <section className="hero-modern" aria-labelledby="hero-title">
+          {/* Ambient Glow Orbs & Subtle Grid Mesh */}
+          <div className="hero-ambient-glow" aria-hidden="true" />
+          <div className="hero-grid-pattern" aria-hidden="true" />
+
+          {/* Giant Outlined Watermark (Next.js inspired) */}
+          <div className="hero-watermark-wrapper" aria-hidden="true">
+            <svg
+              className="hero-watermark-svg"
+              viewBox="0 0 1000 240"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <text
+                x="50%"
+                y="65%"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                className="hero-watermark-text"
+              >
+                TSNX
+              </text>
+            </svg>
+          </div>
+
+          <div className="landing-container hero-inner">
+            {/* Announcement Pill (Angular & Next.js inspired) */}
+            <Link href="/docs/migrating-to-v2" className="hero-badge-pill">
+              <span className="badge-sparkle">
+                <Sparkles size={12} />
+              </span>
+              <span className="badge-text">
+                TSNX v{version} is now available
+              </span>
+              <span className="badge-divider" />
+              <span className="badge-action">
+                Explore what&apos;s new <ArrowRight size={12} />
+              </span>
+            </Link>
+
+            {/* Main Centered Typography */}
+            <h1 id="hero-title" className="hero-title">
+              Build with structure.
+              <br />
+              <span className="hero-title-gradient">
+                Ship with confidence.
+              </span>
+            </h1>
+
+            <p className="hero-subtitle">
+              A modern Web API framework and project system for Node.js.
+              <br className="hidden sm:inline" />
+              Bringing explicit routing, dependency injection, and clean
+              application hosting into one unified TypeScript workflow.
+            </p>
+
+            {/* Dual CTA Buttons (NestJS inspired) */}
+            <div className="hero-actions-row">
+              <Button asChild size="lg" className="hero-btn-primary">
+                <Link href="/docs/quick-start">
+                  Get Started <ArrowRight size={15} />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="hero-btn-secondary"
+              >
+                <a
+                  href={repository}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="TSNX repository on GitHub"
+                >
+                  <Github size={16} />
+                  <span>GitHub</span>
+                  <ArrowUpRight size={13} className="hero-btn-arrow" />
+                </a>
+              </Button>
             </div>
-            <div className="landing-install"><Terminal size={15} aria-hidden="true" /><code>{installCommand}</code><CopyButton text={installCommand} label="Copy CLI installation command" /></div>
+
+            {/* Interactive Package Manager Install Pill (Next.js inspired) */}
+            <div className="hero-install-container">
+              <LandingInstallBar />
+            </div>
+
+            {/* Framework Stats Bar (NestJS bottom metadata row) */}
+            <div className="hero-stats-bar">
+              {frameworkStats.map((stat, idx) => (
+                <div key={idx} className="hero-stat-card">
+                  <span className="stat-label">{stat.label}</span>
+                  <span className="stat-value">{stat.value}</span>
+                  <span className="stat-sub">{stat.sub}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Architectural Motto */}
+            <div className="hero-motto">
+              <span>&#123; THE STRUCTURED APPLICATION FRAMEWORK FOR NODE.JS &#125;</span>
+            </div>
           </div>
-          <div className="landing-hero-example">
-            <div className="landing-example-label"><span><span className="example-dot" /> A small API. A solid start.</span><span>TypeScript</span></div>
-            <CodeBlock code={landingExample} filename="src/main.ts" />
-            <div className="landing-example-response"><span className="response-method">POST</span><code>/warehouses</code><span className="example-response-label">Example response</span><span className="response-status">201 Created</span></div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* INTERACTIVE FEATURE SHOWCASE: Tabbed Explorer (Angular & Next.js inspired)*/}
+        {/* ========================================================================= */}
+        <section
+          id="features"
+          className="section-features"
+          aria-labelledby="features-title"
+        >
+          <div className="landing-container">
+            <div className="section-header-centered">
+              <div className="section-eyebrow">
+                <Zap size={14} />
+                <span>EXPLICIT BY DESIGN</span>
+              </div>
+              <h2 id="features-title" className="section-title">
+                Features that actually solve problems
+              </h2>
+              <p className="section-description">
+                Start with one endpoint. Compose services, validation, and
+                documentation as your application grows — with zero magic decorators.
+              </p>
+            </div>
+
+            {/* Interactive Tabbed Code & Concept Explorer */}
+            <FeatureExplorer items={renderedShowcases} />
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* ARCHITECTURE BENTO GRID: Deep Architectural Capabilities                  */}
+        {/* ========================================================================= */}
+        <section
+          id="architecture"
+          className="section-bento"
+          aria-labelledby="architecture-title"
+        >
+          <div className="landing-container">
+            <div className="section-header-centered">
+              <div className="section-eyebrow">
+                <Layers size={14} />
+                <span>MODULAR ARCHITECTURE</span>
+              </div>
+              <h2 id="architecture-title" className="section-title">
+                Everything you need to build scalable APIs
+              </h2>
+              <p className="section-description">
+                Deterministic lifecycle, native multi-project boundaries, and
+                uncompromising type safety.
+              </p>
+            </div>
+
+            <div className="bento-grid">
+              {/* Bento Card 1: Request Lifecycle Flow */}
+              <div className="bento-card bento-wide">
+                <div className="bento-card-header">
+                  <div className="bento-icon-wrapper">
+                    <Network size={20} />
+                  </div>
+                  <div>
+                    <span className="bento-badge">LIFECYCLE PIPELINE</span>
+                    <h3 className="bento-card-title">
+                      One request. A clear, deterministic path.
+                    </h3>
+                  </div>
+                  <Link
+                    href="/docs/introduction#request-journey"
+                    className="bento-header-link"
+                  >
+                    <span>Follow the journey</span>
+                    <ArrowUpRight size={14} />
+                  </Link>
+                </div>
+                <p className="bento-card-text">
+                  An explicit request context and service scope moves cleanly
+                  through every stage, with guaranteed disposal after work settles.
+                </p>
+
+                {/* Visual Pipeline Stages */}
+                <ol className="pipeline-flow-grid">
+                  {requestStages.map((stage) => (
+                    <li key={stage.step} className="pipeline-node">
+                      <div className="pipeline-node-top">
+                        <span className="pipeline-step">{stage.step}</span>
+                        <ChevronRight
+                          size={14}
+                          className="pipeline-arrow"
+                          aria-hidden="true"
+                        />
+                      </div>
+                      <span className="pipeline-name">{stage.name}</span>
+                      <span className="pipeline-detail">{stage.detail}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              {/* Bento Card 2: Native Project System */}
+              <div className="bento-card bento-split">
+                <div className="bento-split-copy">
+                  <div className="bento-icon-wrapper">
+                    <FolderTree size={20} />
+                  </div>
+                  <span className="bento-badge">MONOREPO PROJECT SYSTEM</span>
+                  <h3 className="bento-card-title">
+                    Clear boundaries. Room to grow.
+                  </h3>
+                  <p className="bento-card-text">
+                    Keep your host entrypoint, business modules, and shared types
+                    in dedicated projects with names that make sense.
+                  </p>
+
+                  <div className="project-layers-list">
+                    <div className="project-layer-item">
+                      <span className="layer-num">01</span>
+                      <div>
+                        <strong>Host</strong>
+                        <p>The entry point. Configures services and runs the server.</p>
+                      </div>
+                    </div>
+                    <div className="project-layer-item">
+                      <span className="layer-num">02</span>
+                      <div>
+                        <strong>Inventory</strong>
+                        <p>A business module with its own isolated public package exports.</p>
+                      </div>
+                    </div>
+                    <div className="project-layer-item">
+                      <span className="layer-num">03</span>
+                      <div>
+                        <strong>SharedKernel</strong>
+                        <p>Shared domain primitives and types used across modules.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="workspace-footnote">
+                    <GitBranch size={15} />
+                    <span>
+                      Native <code>tsconfig.json</code> project references &amp;{" "}
+                      <code>package.json</code> workspaces.
+                    </span>
+                  </div>
+
+                  <Link
+                    href="/docs/project-structure"
+                    className="bento-action-link"
+                  >
+                    <span>Explore the Acme architecture</span>
+                    <ArrowRight size={14} />
+                  </Link>
+                </div>
+
+                <div className="bento-split-visual">
+                  <div className="bento-window">
+                    <div className="bento-window-bar">
+                      <div className="window-dots" aria-hidden="true">
+                        <span className="dot dot-red" />
+                        <span className="dot dot-yellow" />
+                        <span className="dot dot-green" />
+                      </div>
+                      <span className="window-title">Acme Monorepo</span>
+                    </div>
+                    <div
+                      className="highlighted-code bento-code"
+                      dangerouslySetInnerHTML={{ __html: workspaceHtml }}
+                    />
+                  </div>
+                  <div className="project-dependency-chain">
+                    <span className="dep-tag dep-host">Host</span>
+                    <ArrowRight size={13} className="dep-arrow" />
+                    <span className="dep-tag dep-mod">Inventory</span>
+                    <ArrowRight size={13} className="dep-arrow" />
+                    <span className="dep-tag dep-shared">SharedKernel</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bento Card 3: Zero Decorators */}
+              <div className="bento-card">
+                <div className="bento-icon-wrapper">
+                  <ShieldCheck size={20} />
+                </div>
+                <span className="bento-badge">ZERO RUNTIME MAGIC</span>
+                <h3 className="bento-card-title">Pure TypeScript. No experimental flags.</h3>
+                <p className="bento-card-text">
+                  No <code>experimentalDecorators</code> or <code>emitDecoratorMetadata</code> required.
+                  Handler arguments, route paths, and responses are fully typechecked by standard TypeScript.
+                </p>
+                <div className="bento-pill-tags">
+                  <span className="bento-tag">100% Strict Types</span>
+                  <span className="bento-tag">Fast Build Times</span>
+                  <span className="bento-tag">Zero Polyfills</span>
+                </div>
+              </div>
+
+              {/* Bento Card 4: High-Performance DI */}
+              <div className="bento-card">
+                <div className="bento-icon-wrapper">
+                  <Cpu size={20} />
+                </div>
+                <span className="bento-badge">SCOPED IOC ENGINE</span>
+                <h3 className="bento-card-title">Automatic disposal of request resources.</h3>
+                <p className="bento-card-text">
+                  Services registered as <code>scoped</code> exist for the duration of a single HTTP request
+                  and are automatically disposed when the response settles, preventing memory leaks.
+                </p>
+                <div className="bento-pill-tags">
+                  <span className="bento-tag">Singleton</span>
+                  <span className="bento-tag">Scoped</span>
+                  <span className="bento-tag">Transient</span>
+                </div>
+              </div>
+
+              {/* Bento Card 5: OpenAPI 3.1 & Scalar */}
+              <div className="bento-card">
+                <div className="bento-icon-wrapper">
+                  <Code2 size={20} />
+                </div>
+                <span className="bento-badge">DOCUMENTATION FIRST</span>
+                <h3 className="bento-card-title">Interactive Scalar UI out of the box.</h3>
+                <p className="bento-card-text">
+                  Export valid OpenAPI 3.1 definitions directly to JSON, or host the beautiful
+                  modern Scalar interactive documentation portal with one function call.
+                </p>
+                <div className="bento-pill-tags">
+                  <span className="bento-tag">OpenAPI 3.1</span>
+                  <span className="bento-tag">Scalar UI</span>
+                  <span className="bento-tag">SDK Generation Ready</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* QUICK START CTA SECTION: Terminal Scaffolding Card                        */}
+        {/* ========================================================================= */}
+        <section className="section-cta" aria-labelledby="cta-title">
+          <div className="landing-container">
+            <div className="cta-card">
+              <div className="cta-ambient-glow" aria-hidden="true" />
+              <div className="cta-content">
+                <div className="section-eyebrow">
+                  <Boxes size={14} />
+                  <span>START IN SECONDS</span>
+                </div>
+                <h2 id="cta-title" className="cta-title">
+                  Your next API starts here.
+                </h2>
+                <p className="cta-text">
+                  Scaffold a host with the CLI, run it locally with hot-reloading,
+                  and build production-ready services in minutes.
+                </p>
+
+                <div className="cta-actions">
+                  <Button asChild size="lg" className="hero-btn-primary">
+                    <Link href="/docs/quick-start">
+                      Follow the Quick Start <ArrowRight size={15} />
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="lg" className="hero-btn-secondary">
+                    <Link href="/docs/introduction">Read Introduction</Link>
+                  </Button>
+                </div>
+              </div>
+
+              <div className="cta-terminal">
+                <div className="cta-terminal-bar">
+                  <div className="window-dots" aria-hidden="true">
+                    <span className="dot dot-red" />
+                    <span className="dot dot-yellow" />
+                    <span className="dot dot-green" />
+                  </div>
+                  <span className="window-title">bash — 80x24</span>
+                </div>
+                <div
+                  className="highlighted-code cta-code"
+                  dangerouslySetInnerHTML={{ __html: cliQuickstartHtml }}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* RELEASE BANNER                                                            */}
+        {/* ========================================================================= */}
+        <section className="section-release landing-container">
+          <div className="release-banner-card">
+            <div className="release-banner-icon">
+              <Workflow size={24} />
+            </div>
+            <div className="release-banner-copy">
+              <span className="release-tag">v{version} · STABLE PRODUCTION RELEASE</span>
+              <h3 className="release-title">
+                TSNX {version} is ready for production.
+              </h3>
+              <p className="release-desc">
+                Explore the latest request descriptors, OpenAPI 3.1 Scalar integration,
+                and upgraded project scaffolding tools.
+              </p>
+            </div>
+            <Button asChild variant="outline" className="release-btn">
+              <Link href="/docs/migrating-to-v2">
+                Migration Guide <ArrowRight size={14} />
+              </Link>
+            </Button>
+          </div>
+        </section>
+      </main>
+
+      {/* ========================================================================= */}
+      {/* MODERN FOOTER                                                             */}
+      {/* ========================================================================= */}
+      <footer className="footer-modern">
+        <div className="landing-container footer-inner">
+          <div className="footer-brand-col">
+            <Brand />
+            <p className="footer-tagline">
+              A structured, dependable foundation for building production TypeScript APIs.
+            </p>
+            <span className="footer-copy">MIT License · TSNX</span>
+          </div>
+
+          <div className="footer-nav-groups">
+            <div className="footer-group">
+              <span className="footer-heading">Documentation</span>
+              <Link href="/docs/introduction">Introduction</Link>
+              <Link href="/docs/quick-start">Quick Start</Link>
+              <Link href="/docs/routing">Routing &amp; Middleware</Link>
+              <Link href="/docs/dependency-injection">Dependency Injection</Link>
+            </div>
+
+            <div className="footer-group">
+              <span className="footer-heading">Architecture</span>
+              <Link href="/docs/project-structure">Project System</Link>
+              <Link href="/docs/declarative-binding">Runtime Binding</Link>
+              <Link href="/docs/endpoint-filters">Endpoint Filters</Link>
+              <Link href="/docs/openapi">OpenAPI &amp; Scalar</Link>
+            </div>
+
+            <div className="footer-group">
+              <span className="footer-heading">Ecosystem</span>
+              <a href={repository} target="_blank" rel="noreferrer">
+                GitHub <ArrowUpRight size={12} />
+              </a>
+              <a href={`${repository}/issues`} target="_blank" rel="noreferrer">
+                Issue Tracker <ArrowUpRight size={12} />
+              </a>
+              <a href={`${repository}/releases`} target="_blank" rel="noreferrer">
+                Releases <ArrowUpRight size={12} />
+              </a>
+            </div>
           </div>
         </div>
-      </section>
-
-      <section id="features" className="landing-features landing-container" aria-labelledby="features-title">
-        <div className="landing-section-heading"><div><p className="landing-eyebrow">EXPLICIT BY DESIGN</p><h2 id="features-title">The pieces your API needs.<br /><span>Already working together.</span></h2></div><p>Start with one endpoint. Add services, validation, and documentation as your application grows.</p></div>
-        <div className="landing-feature-grid">{features.map(({ icon: Icon, ...feature }) => <Link key={feature.href} href={`/docs/${feature.href}`} className="landing-feature">
-          <div className="landing-feature-top"><span><Icon size={19} /></span><ArrowUpRight size={16} /></div>
-          <p className="landing-feature-label">{feature.label}</p><h3>{feature.title}</h3><p>{feature.text}</p><code>{feature.code}</code>
-        </Link>)}</div>
-      </section>
-
-      <section className="landing-flow-section" aria-labelledby="flow-title"><div className="landing-container">
-        <div className="landing-flow-heading"><span className="landing-flow-icon"><Network size={22} /></span><div><h2 id="flow-title">One request. A clear path.</h2><p>An explicit context and service scope through the pipeline, with cleanup after handler work settles.</p></div><Link href="/docs/introduction#request-journey">Follow the lifecycle <ArrowUpRight size={14} /></Link></div>
-        <ol className="landing-request-flow">{requestStages.map((stage, index) => <li key={stage}><span className="request-stage-index">0{index + 1}</span><span>{stage}</span>{index < requestStages.length - 1 && <ChevronRight size={14} aria-hidden="true" />}</li>)}</ol>
-      </div></section>
-
-      <section id="workspace" className="landing-workspace landing-container" aria-labelledby="workspace-title">
-        <div className="landing-workspace-copy"><p className="landing-eyebrow">NATIVE PROJECTS. CLEAR BOUNDARIES.</p><h2 id="workspace-title">A small workspace.<br /><span>Room to grow.</span></h2><p>Keep your host, business modules, and shared types in projects with names that make sense. Acme starts with just three.</p>
-          <div className="landing-project-roles"><div><span>01</span><p><strong>Host</strong>The entry point. Configure services and start your API.</p></div><div><span>02</span><p><strong>Inventory</strong>A business module with its own public package exports.</p></div><div><span>03</span><p><strong>SharedKernel</strong>The shared types and primitives your modules need.</p></div></div>
-          <p className="landing-native-note"><GitBranch size={16} /><span>Native <code>tsconfig.json</code> references and <code>package.json</code> workspaces. Familiar tools, explicit dependencies.</span></p>
-          <Link className="landing-text-link" href="/docs/project-structure">Explore the Acme structure <ArrowRight size={15} /></Link>
-        </div>
-        <div className="landing-workspace-visual"><CodeBlock code={workspaceTree} language="bash" filename="Acme/" /><div className="landing-dependencies"><span>Host</span><ArrowRight size={14} /><span>Inventory</span><ArrowRight size={14} /><span>SharedKernel</span></div></div>
-      </section>
-
-      <section className="landing-start-section" aria-labelledby="start-title"><div className="landing-container landing-start-layout">
-        <div><p className="landing-eyebrow">FROM EMPTY FOLDER TO FIRST REQUEST</p><h2 id="start-title">Your next idea<br />starts here.</h2><p>Scaffold a host with the CLI, run it locally, and build from there. The guides explain the contracts behind every feature.</p><Link className="landing-text-link" href="/docs/quick-start">Follow the quick start <ArrowRight size={15} /></Link></div>
-        <CodeBlock code={`${installCommand}\n\ntsnx create webapi Host\n\ncd Host\ntsnx run`} language="bash" filename="Terminal" />
-      </div></section>
-
-      <section className="landing-release-section landing-container" aria-labelledby="release-title"><div className="landing-release-copy"><span className="landing-release-icon"><Layers3 size={24} /></span><div><p className="landing-eyebrow">v{version} · STABLE RELEASE</p><h2 id="release-title">TSNX 2.0 is now generally available.</h2><p>Explore the new request descriptors, OpenAPI endpoint documentation, and migration notes.</p></div></div><Button variant="outline" asChild><Link href="/docs/migrating-to-v2">Read migration guide <ArrowRight /></Link></Button></section>
-    </main>
-    <footer className="landing-footer"><div className="landing-container"><div className="landing-footer-brand"><Brand /><p>A thoughtful foundation for TypeScript APIs.</p></div><nav aria-label="Footer navigation"><Link href="/docs/introduction">Documentation</Link><Link href="/docs/quick-start">Quick start</Link><a href={repository} target="_blank" rel="noreferrer">GitHub <ArrowUpRight size={12} /></a><a href={`${repository}/issues`} target="_blank" rel="noreferrer">Feedback <ArrowUpRight size={12} /></a></nav><span className="landing-license">MIT · TSNX</span></div></footer>
-  </div>;
+      </footer>
+    </div>
+  );
 }

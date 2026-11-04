@@ -18,6 +18,8 @@ export interface JwtBearerOptions {
   jwksUri?: string;
   /** Symmetric secret key for HS256/384/512 tokens. */
   secretKey?: string | Uint8Array | CryptoKey;
+  /** Alias for secretKey. */
+  secret?: string | Uint8Array | CryptoKey;
   /** Public key in PEM format or CryptoKey for RS256/ES256 tokens. */
   publicKey?: string | Uint8Array | CryptoKey;
   /** Full custom validation parameters if advanced options are required. */
@@ -35,7 +37,7 @@ export class JwtBearerAuthenticationHandler implements IAuthenticationHandler {
       issuer: options.issuer,
       audience: options.audience,
       jwksUri: options.jwksUri,
-      secretKey: options.secretKey,
+      secretKey: options.secretKey ?? options.secret,
       publicKey: options.publicKey,
     };
 

@@ -198,4 +198,61 @@ describe('@tsnx/auth: WebApplication End-to-End Integration', () => {
     assert.deepEqual(inventory.security, [{ BearerAuth: [] }]);
     assert.ok(inventory.responses['401']);
   });
+
+  it('supports fluent builder.addAuthentication() and builder.addAuthorization() syntax', async () => {
+    const builder = WebApplication.createBuilder();
+
+    // Fluent on builder directly
+    builder
+      .addAuthentication()
+      .addJwtBearer({ secret: TEST_SECRET });
+
+    builder.addAuthorization((options) => {
+      options.addPolicy('Special', (p) => p.requireRole('special'));
+    });
+
+    const app = builder.build();
+    app.useAuth();
+
+    app.mapGet('/fluent', (ctx) => Results.text(ctx.user.id)).requireAuthorization();
+
+    const factory = new WebApplicationFactory(() => app);
+    const client = await factory.createClient();
+
+    const token = await createToken({ sub: 'fluent_user', exp: Math.floor(Date.now() / 1000) + 3600 });
+    client.setBearerToken(token);
+
+    const res = await client.get('/fluent');
+    assert.equal(res.status, 200);
+    assert.equal(await res.text(), 'fluent_user');
+
+    await factory.dispose();
+  });
+
+  it('supports builder.services.addAuthorization() and PascalCase aliases', () => {
+    const builder = WebApplication.createBuilder();
+
+    // Calling on builder.services directly
+    builder.services.addAuthentication?.().addJwtBearer({ secret: TEST_SECRET });
+    builder.services.addAuthorization?.((options) => {
+      options.addPolicy('Admin', (p) => p.requireRole('admin'));
+    });
+
+    // Calling PascalCase aliases
+    builder.AddAuthentication?.().addJwtBearer({ secret: TEST_SECRET });
+    builder.AddAuthorization?.((options) => {
+      options.addPolicy('SuperAdmin', (p) => p.requireRole('superadmin'));
+    });
+
+    const app = builder.build();
+    app.UseAuth?.();
+
+    // Check error guard when addAuthorization is called on app
+    assert.throws(
+      () => {
+        (app as any).addAuthorization();
+      },
+      /Cannot call app\.addAuthorization\(\) after builder\.build\(\)/,
+    );
+  });
 });

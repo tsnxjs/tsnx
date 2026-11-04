@@ -10,12 +10,14 @@ declare module '@tsnx/web' {
      * Modeled after ASP.NET Core [Authorize] / .RequireAuthorization().
      */
     requireAuthorization(policyName?: string): this;
+    RequireAuthorization?(policyName?: string): this;
 
     /**
      * Allows anonymous access to this endpoint, bypassing any group or fallback authorization policy.
      * Modeled after ASP.NET Core [AllowAnonymous] / .AllowAnonymous().
      */
     allowAnonymous(): this;
+    AllowAnonymous?(): this;
   }
 
   interface RouteGroupBuilder {
@@ -24,12 +26,14 @@ declare module '@tsnx/web' {
      * Modeled after ASP.NET Core .RequireAuthorization().
      */
     requireAuthorization(policyName?: string): this;
+    RequireAuthorization?(policyName?: string): this;
 
     /**
      * Allows anonymous access for all routes declared within this group.
      * Modeled after ASP.NET Core .AllowAnonymous().
      */
     allowAnonymous(): this;
+    AllowAnonymous?(): this;
   }
 }
 
@@ -72,3 +76,9 @@ if (!(RouteGroupBuilder.prototype as any).allowAnonymous) {
     return this;
   };
 }
+
+// PascalCase aliases for ASP.NET Core developer ergonomics
+(RouteHandlerBuilder.prototype as any).RequireAuthorization = (RouteHandlerBuilder.prototype as any).requireAuthorization;
+(RouteHandlerBuilder.prototype as any).AllowAnonymous = (RouteHandlerBuilder.prototype as any).allowAnonymous;
+(RouteGroupBuilder.prototype as any).RequireAuthorization = (RouteGroupBuilder.prototype as any).requireAuthorization;
+(RouteGroupBuilder.prototype as any).AllowAnonymous = (RouteGroupBuilder.prototype as any).allowAnonymous;

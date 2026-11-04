@@ -34,7 +34,7 @@ import { addAuthentication, addAuthorization } from '@tsnx/auth';
 const builder = WebApplication.createBuilder();
 
 // 1. Configure Authentication
-addAuthentication(builder.services)
+builder.addAuthentication()
   .addJwtBearer({
     issuer: 'https://auth.my-company.com/',
     audience: 'https://api.my-company.com',
@@ -42,7 +42,7 @@ addAuthentication(builder.services)
   });
 
 // 2. Configure Authorization Policies
-addAuthorization(builder.services, (authz) => {
+builder.addAuthorization((authz) => {
   authz.addPolicy('AdminOnly', (policy) => policy.requireRole('admin'));
   authz.addPolicy('InventoryManager', (policy) =>
     policy.requireClaim('department', 'inventory'),

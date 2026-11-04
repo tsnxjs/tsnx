@@ -23,27 +23,37 @@ export function Brand() {
 }
 
 export function LandingHeader() {
-  return <header className="site-header landing-header"><div className="landing-header-inner">
-    <Brand />
-    <nav className="landing-nav" aria-label="Main navigation">
-      <a href="#features" className="landing-section-link">Features</a>
-      <a href="#workspace" className="landing-section-link">Project system</a>
-      <Link href="/docs/introduction">Documentation <ArrowRight size={13} /></Link>
-    </nav>
-    <div className="landing-header-actions">
-      <a className="landing-github" href={repository} target="_blank" rel="noreferrer" aria-label="TSNX on GitHub"><Github size={18} /></a>
-      <ThemeToggle />
-      <Button asChild className="landing-header-cta"><Link href="/docs/quick-start">Get started <ArrowRight /></Link></Button>
-    </div>
-  </div></header>;
+  return (
+    <header className="landing-floating-header">
+      <div className="landing-floating-nav">
+        <Brand />
+        <nav className="landing-nav-links" aria-label="Main navigation">
+          <Link href="/docs/introduction">Docs</Link>
+          <a href="#features" className="landing-section-link">Features</a>
+          <a href="#architecture" className="landing-section-link">Architecture</a>
+          <Link href="/docs/quick-start" className="landing-section-link">Quick Start</Link>
+        </nav>
+        <div className="landing-header-actions">
+          <SearchDocs pageDocs={docs} basePath="/docs" />
+          <a className="landing-github-link" href={repository} target="_blank" rel="noreferrer" aria-label="TSNX on GitHub">
+            <Github size={18} />
+          </a>
+          <ThemeToggle />
+          <Button asChild size="sm" className="landing-header-cta-btn">
+            <Link href="/docs/quick-start">Get Started</Link>
+          </Button>
+        </div>
+      </div>
+    </header>
+  );
 }
 
-function ThemeToggle() {
+export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   return <Button variant="ghost" size="icon" aria-label="Toggle color theme" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}><Sun className="dark:hidden" /><Moon className="hidden dark:block" /></Button>;
 }
 
-function SearchDocs({ pageDocs, basePath }: { pageDocs: Doc[]; basePath: string }) {
+export function SearchDocs({ pageDocs, basePath }: { pageDocs: Doc[]; basePath: string }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   useEffect(() => {
