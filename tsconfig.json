@@ -10,6 +10,7 @@
     { "path": "./packages/scalar" },
     { "path": "./packages/testing" },
     { "path": "./packages/mediator" },
+    { "path": "./packages/auth" },
     { "path": "./apps/cli" }
   ]
 }

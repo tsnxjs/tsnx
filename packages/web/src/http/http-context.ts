@@ -617,6 +617,7 @@ export class HttpContext {
   public readonly traceIdentifier: string;
   public readonly items: Map<string, any> = new Map();
   public params: Record<string, string> = {};
+  public user?: any;
 
   constructor(
     req: IncomingMessage,
