@@ -11,6 +11,7 @@
     { "path": "../hosting-abstractions" },
     { "path": "../hosting" },
     { "path": "../web" },
+    { "path": "../openapi" },
     { "path": "../testing" }
   ],
   "include": ["src/**/*"]

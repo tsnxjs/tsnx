@@ -64,6 +64,9 @@ export function generateOpenApiDocument(
   const servers = options.servers ?? [{ url: '/' }];
   const paths: Record<string, Record<string, OpenApiOperation>> = {};
   const tagsSet = new Set<string>();
+  const defaultSchemeName = options.defaultSecurityScheme ?? 'BearerAuth';
+  let hasProtectedEndpoints = false;
+  const components: Record<string, any> = options.components ? structuredClone(options.components) : {};
 
   for (const endpoint of app.endpoints) {
     // Skip self-documentation endpoints if registered
@@ -195,6 +198,45 @@ export function generateOpenApiDocument(
       tagsSet.add(tag);
     }
 
+    // Inspect authorization metadata
+    const isAnonymous = Boolean(endpoint.metadata.getCustom?.('tsnx.auth.allow_anonymous'));
+    const authorizeMeta = endpoint.metadata.getCustom?.('tsnx.auth.authorize') as
+      | { readonly policyName?: string; readonly schemes?: readonly string[] }
+      | undefined;
+    const isProtected = Boolean(authorizeMeta) && !isAnonymous;
+
+    let security: Record<string, string[]>[] | undefined = undefined;
+    if (isProtected) {
+      hasProtectedEndpoints = true;
+      const schemes: readonly string[] = authorizeMeta?.schemes?.length
+        ? authorizeMeta.schemes
+        : [defaultSchemeName];
+      security = schemes.map((s) => ({ [s]: [] }));
+
+      if (!responses['401']) {
+        responses['401'] = {
+          description: 'Unauthorized',
+          content: {
+            'application/problem+json': {
+              schema: PROBLEM_DETAILS_SCHEMA,
+            },
+          },
+        };
+      }
+      if (!responses['403']) {
+        responses['403'] = {
+          description: 'Forbidden',
+          content: {
+            'application/problem+json': {
+              schema: PROBLEM_DETAILS_SCHEMA,
+            },
+          },
+        };
+      }
+    } else if (isAnonymous && authorizeMeta) {
+      security = [];
+    }
+
     // Build operation
     const operation: OpenApiOperation = {
       summary: endpoint.metadata.getSummary(),
@@ -204,6 +246,7 @@ export function generateOpenApiDocument(
       parameters: parameters.length > 0 ? parameters : undefined,
       requestBody,
       responses,
+      security,
     };
 
     const requestBodySchema = requestBody?.content?.['application/json']?.schema;
@@ -219,6 +262,20 @@ export function generateOpenApiDocument(
     paths[openApiPath][method] = operation;
   }
 
+  if (hasProtectedEndpoints) {
+    if (!components.securitySchemes) {
+      components.securitySchemes = {};
+    }
+    if (!components.securitySchemes[defaultSchemeName]) {
+      components.securitySchemes[defaultSchemeName] = {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'JWT Authorization header using the Bearer scheme.',
+      };
+    }
+  }
+
   const documentTags =
     tagsSet.size > 0 ? Array.from(tagsSet).map((name) => ({ name })) : undefined;
 
@@ -227,6 +284,8 @@ export function generateOpenApiDocument(
     info,
     servers,
     paths: paths as Record<string, OpenApiPathItem>,
+    components: Object.keys(components).length > 0 ? components : undefined,
+    security: options.security,
     tags: documentTags,
   };
 }

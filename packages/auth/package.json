@@ -38,6 +38,7 @@
   },
   "devDependencies": {
     "@tsnx/hosting": "workspace:*",
+    "@tsnx/openapi": "workspace:*",
     "@tsnx/testing": "workspace:*",
     "@types/node": "^22.13.9"
   },

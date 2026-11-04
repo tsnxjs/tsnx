@@ -86,6 +86,7 @@ await app.run();
 | Package | Version | Description |
 |---|---|---|
 | [`@tsnx/web`](./packages/web) | `2.0.0` | Native HTTP Web API engine, onion middleware, route matching, and request-scoped DI |
+| [`@tsnx/auth`](./packages/auth) | `2.0.0` | Claims-based identity, JWT Bearer, JWKS rotation, and policy-based authorization |
 | [`@tsnx/openapi`](./packages/openapi) | `2.0.0` | Automatic OpenAPI 3.1 specification generation from route definitions |
 | [`@tsnx/scalar`](./packages/scalar) | `2.0.0` | Embedded interactive Scalar API reference documentation endpoint |
 | [`@tsnx/hosting`](./packages/hosting) | `2.0.0` | Application hosting foundation, Dependency Injection, Configuration, and Hosted Services |

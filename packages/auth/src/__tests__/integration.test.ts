@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { WebApplication, Results } from '@tsnx/web';
 import { WebApplicationFactory } from '@tsnx/testing';
+import { generateOpenApiDocument } from '@tsnx/openapi';
 import {
   addAuthentication,
   addAuthorization,
@@ -171,5 +172,30 @@ describe('@tsnx/auth: WebApplication End-to-End Integration', () => {
     assert.equal(data.user, 'usr_group_tester');
 
     await factory.dispose();
+  });
+
+  it('integrates seamlessly with @tsnx/openapi: generates security requirements and schemes', async () => {
+    const app = createApp();
+    const doc = generateOpenApiDocument(app);
+
+    assert.ok(doc.components?.securitySchemes?.BearerAuth);
+    assert.equal(doc.components.securitySchemes.BearerAuth.type, 'http');
+    assert.equal(doc.components.securitySchemes.BearerAuth.scheme, 'bearer');
+
+    // /api/public -> no security
+    assert.equal(doc.paths['/api/public']?.get?.security, undefined);
+
+    // /api/profile -> security: [{ BearerAuth: [] }], 401 & 403 problem responses
+    const profile = doc.paths['/api/profile']?.get;
+    assert.ok(profile);
+    assert.deepEqual(profile.security, [{ BearerAuth: [] }]);
+    assert.ok(profile.responses['401']);
+    assert.ok(profile.responses['403']);
+
+    // /api/secure/inventory -> protected via group
+    const inventory = doc.paths['/api/secure/inventory']?.get;
+    assert.ok(inventory);
+    assert.deepEqual(inventory.security, [{ BearerAuth: [] }]);
+    assert.ok(inventory.responses['401']);
   });
 });

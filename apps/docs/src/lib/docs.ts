@@ -66,6 +66,10 @@ export const docs: Doc[] = [
               "HTTP server, routing, middleware, and request binding"
             ],
             [
+              "@tsnx/auth",
+              "Resource Server JWT Bearer authentication, JWKS key rotation, and policy authorization"
+            ],
+            [
               "@tsnx/hosting",
               "Dependency injection, configuration, and lifecycle"
             ],
@@ -1412,7 +1416,7 @@ export const docs: Doc[] = [
         "title": "OpenAPI generation boundaries",
         "text": "The generator skips the default OpenAPI route and paths beginning with /scalar or /swagger. Custom documentation paths are not universally detected, so inspect a generated document if you change those routes.",
         "paragraphs": [
-          "The current generator does not infer an authentication scheme from arbitrary middleware or security-related custom metadata. Verify the emitted OpenAPI document rather than assuming a policy is documented or enforced."
+          "When using @tsnx/auth, the generator automatically inspects authorization metadata (.requireAuthorization() and .allowAnonymous()) to emit operation security requirements, components.securitySchemes, and 401/403 Problem Details responses. Arbitrary custom middlewares outside @tsnx/auth require explicit OpenAPI options."
         ]
       }
     ],
@@ -1424,7 +1428,97 @@ export const docs: Doc[] = [
     ],
     "related": [
       "declarative-binding",
-      "route-groups"
+      "route-groups",
+      "authentication-and-authorization"
+    ]
+  },
+  {
+    "slug": "authentication-and-authorization",
+    "title": "Authentication & Authorization",
+    "group": "Build your API",
+    "source": "packages/auth/src/index.ts",
+    "description": "Enterprise Resource Server gatekeeper modeled after ASP.NET Core with JWT Bearer, remote JWKS key rotation, ClaimsPrincipal, and policy-based authorization.",
+    "sections": [
+      {
+        "id": "resource-server-architecture",
+        "title": "Resource Server Architecture",
+        "text": "TSNX enforces a strict separation of concerns modeled after Microsoft.AspNetCore.Authentication and Microsoft.AspNetCore.Authorization. @tsnx/auth acts exclusively as a Resource Server gatekeeper: it verifies incoming tokens (JWT Bearer, API Keys) from external Identity Providers (Keycloak, Auth0, Supabase, Okta, Firebase, AWS Cognito) and authorizes requests based on claims and policies.",
+        "paragraphs": [
+          "TSNX does not manage user tables, password hashing, or OAuth authorization servers. Offloading identity management to dedicated IdPs prevents security vulnerabilities and scope creep while giving your API high-performance, stateless credential verification."
+        ]
+      },
+      {
+        "id": "installation",
+        "title": "Installation",
+        "text": "Install @tsnx/auth in your TSNX workspace or project.",
+        "code": "npm install @tsnx/auth\n# or\npnpm add @tsnx/auth",
+        "language": "bash",
+        "filename": "Terminal"
+      },
+      {
+        "id": "quick-start",
+        "title": "Quick Start",
+        "text": "Register authentication and authorization services on the builder, then call app.useAuth() before mapping endpoints.",
+        "code": "import { WebApplication, Results } from '@tsnx/web';\nimport { addAuthentication, addAuthorization } from '@tsnx/auth';\n\nconst builder = WebApplication.createBuilder();\n\n// 1. Configure Authentication Scheme\naddAuthentication(builder.services)\n  .addJwtBearer({\n    secret: 'your-256-bit-symmetric-secret-key-here!',\n    issuer: 'https://auth.example.com',\n    audience: 'https://api.example.com',\n  });\n\n// 2. Configure Authorization Policies\naddAuthorization(builder.services, (authz) => {\n  authz.addPolicy('AdminOnly', (policy) => policy.requireRole('admin'));\n  authz.addPolicy('Managers', (policy) => policy.requireClaim('department', 'management'));\n});\n\nconst app = builder.build();\n\n// 3. Mount Authentication and Authorization Middlewares\napp.useAuth();\n\n// 4. Map Endpoints\napp.mapGet('/api/public', () => Results.text('Public info')).allowAnonymous();\n\napp.mapGet('/api/profile', (ctx) => {\n  return Results.json({\n    userId: ctx.user.id,\n    roles: ctx.user.roles,\n  });\n}).requireAuthorization();\n\napp.mapGet('/api/admin', () => Results.text('Admin area')).requireAuthorization('AdminOnly');\n\nawait app.run();",
+        "filename": "src/main.ts"
+      },
+      {
+        "id": "claims-principal",
+        "title": "Claims-Based Identity & ClaimsPrincipal",
+        "text": "When credentials are verified, a ClaimsPrincipal is constructed and attached to ctx.user on HttpContext. If no credentials are supplied, an anonymous principal is provided.",
+        "paragraphs": [
+          "ctx.user exposes standard claims helpers: isAuthenticated, id, roles, hasClaim(type, value?), isInRole(role), and findFirst(type). Multiple claims with the same type are cleanly aggregated."
+        ],
+        "code": "app.mapGet('/api/me', (ctx) => {\n  if (!ctx.user.isAuthenticated) {\n    return Results.unauthorized();\n  }\n\n  return Results.json({\n    id: ctx.user.id,\n    name: ctx.user.getName(),\n    roles: ctx.user.roles,\n    tenantId: ctx.user.findFirst('tenant_id')?.value,\n    isAdmin: ctx.user.isInRole('admin'),\n  });\n}).requireAuthorization();",
+        "filename": "src/routes/me.ts"
+      },
+      {
+        "id": "jwt-bearer-and-jwks",
+        "title": "JWT Bearer & Remote JWKS Key Rotation",
+        "text": "TSNX uses native Web Standards Web Crypto API (SubtleCrypto) with zero native binary dependencies. It supports HS256 (symmetric secret), RS256, and ES256 (asymmetric keys).",
+        "paragraphs": [
+          "In production with external IdPs (Keycloak, Auth0, Supabase, Entra ID), configure jwksUri. TSNX fetches public JSON Web Key Sets dynamically, caches them with a configurable TTL (defaults to 10 minutes), and handles key rotation gracefully."
+        ],
+        "code": "addAuthentication(builder.services)\n  .addJwtBearer({\n    jwksUri: 'https://auth.company.com/.well-known/jwks.json',\n    issuer: 'https://auth.company.com',\n    audience: 'https://api.company.com',\n    cacheTtlMs: 15 * 60 * 1000, // 15 minutes\n  });",
+        "filename": "src/main.ts"
+      },
+      {
+        "id": "policy-based-authorization",
+        "title": "Policy-Based Authorization",
+        "text": "Policies separate business requirements from endpoint logic. A policy consists of one or more requirements that must all succeed.",
+        "paragraphs": [
+          "Use requireRole() to match any of the given roles, requireClaim() to match claim types and values, or requireAssertion() to execute custom synchronous or asynchronous predicates evaluating HttpContext and ClaimsPrincipal."
+        ],
+        "code": "addAuthorization(builder.services, (options) => {\n  // Default policy applied when .requireAuthorization() is called without argument\n  options.addPolicy('Default', (p) => p.requireAuthenticatedUser());\n\n  // Role requirement\n  options.addPolicy('Operator', (p) => p.requireRole('operator', 'admin'));\n\n  // Custom asynchronous assertion (e.g., tenant or clearance check)\n  options.addPolicy('TenantClearance', (p) =>\n    p.requireAssertion(async (ctx, user) => {\n      const tenantHeader = ctx.request.headers['x-tenant-id'];\n      const userTenant = user.findFirst('tenant_id')?.value;\n      return Boolean(tenantHeader && tenantHeader === userTenant);\n    })\n  );\n});",
+        "filename": "src/main.ts"
+      },
+      {
+        "id": "route-groups-and-allow-anonymous",
+        "title": "Route Groups & Allow Anonymous",
+        "text": "Protect entire URL namespaces using route groups with .requireAuthorization(). Individual endpoints within the group can explicitly opt out with .allowAnonymous().",
+        "code": "const api = app.mapGroup('/api/v1').requireAuthorization('Operator');\n\n// Inherits Operator policy\napi.mapGet('/nodes', () => Results.json([]));\n\n// Opts out of authorization for health checks\napi.mapGet('/health', () => Results.ok({ status: 'healthy' })).allowAnonymous();",
+        "filename": "src/main.ts"
+      },
+      {
+        "id": "openapi-security-schemes",
+        "title": "Automatic OpenAPI 3.1 Security Schemes",
+        "text": "When you map OpenAPI specification endpoints using @tsnx/openapi, any endpoint marked with .requireAuthorization() is automatically decorated with security requirements (e.g. BearerAuth), 401 Unauthorized, and 403 Forbidden RFC 9457 Problem Details responses.",
+        "paragraphs": [
+          "components.securitySchemes is automatically populated with the BearerAuth definition without manual OpenAPI schema editing."
+        ]
+      }
+    ],
+    "sources": [
+      "packages/auth/src/claims/claims-principal.ts",
+      "packages/auth/src/jwt/jwt-verifier.ts",
+      "packages/auth/src/authorization/service.ts",
+      "packages/auth/src/endpoints/extensions.ts",
+      "packages/openapi/src/generator.ts"
+    ],
+    "related": [
+      "route-groups",
+      "middleware",
+      "openapi"
     ]
   },
   {

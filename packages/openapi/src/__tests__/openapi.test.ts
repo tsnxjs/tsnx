@@ -477,4 +477,65 @@ describe('Milestone 06: @tsnx/openapi Document Generation', () => {
     assert.strictEqual(doc.info.title, 'Custom Ping API');
     assert.ok(doc.paths['/ping']?.get);
   });
+
+  test('generateOpenApiDocument automatically emits security schemes and 401/403 responses for authorized routes', () => {
+    const builder = WebApplication.createBuilder();
+    const testApp = builder.build();
+
+    // 1. Public route without auth
+    testApp.mapGet('/public', () => Results.text('public'));
+
+    // 2. Protected route with default authorization
+    testApp.mapGet('/protected', () => Results.text('protected'))
+      .withMetadata('tsnx.auth.authorize', { policyName: 'Authenticated' });
+
+    // 3. Protected route with custom scheme
+    testApp.mapGet('/custom-auth', () => Results.text('custom'))
+      .withMetadata('tsnx.auth.authorize', { schemes: ['CustomToken'] });
+
+    // 4. Group with auth and one overridden anonymous route
+    const group = testApp.mapGroup('/api')
+      .withMetadata('tsnx.auth.authorize', { policyName: 'ApiUsers' });
+
+    group.mapGet('/admin', () => Results.text('admin'));
+    group.mapGet('/health', () => Results.text('health'))
+      .withMetadata('tsnx.auth.allow_anonymous', true);
+
+    const doc = generateOpenApiDocument(testApp);
+
+    // Verify security components
+    assert.ok(doc.components?.securitySchemes?.BearerAuth, 'components.securitySchemes.BearerAuth should exist');
+    assert.strictEqual(doc.components.securitySchemes.BearerAuth.scheme, 'bearer');
+    assert.strictEqual(doc.components.securitySchemes.BearerAuth.type, 'http');
+
+    // Public route should not have security
+    assert.strictEqual(doc.paths['/public']?.get?.security, undefined);
+    assert.strictEqual(doc.paths['/public']?.get?.responses['401'], undefined);
+
+    // Protected route should have BearerAuth and 401/403 Problem Details
+    const protectedGet = doc.paths['/protected']?.get;
+    assert.ok(protectedGet);
+    assert.deepStrictEqual(protectedGet.security, [{ BearerAuth: [] }]);
+    assert.ok(protectedGet.responses['401']);
+    assert.strictEqual(protectedGet.responses['401'].description, 'Unauthorized');
+    assert.ok(protectedGet.responses['403']);
+    assert.strictEqual(protectedGet.responses['403'].description, 'Forbidden');
+
+    // Custom scheme route
+    const customGet = doc.paths['/custom-auth']?.get;
+    assert.ok(customGet);
+    assert.deepStrictEqual(customGet.security, [{ CustomToken: [] }]);
+
+    // Group admin route inherits protection
+    const adminGet = doc.paths['/api/admin']?.get;
+    assert.ok(adminGet);
+    assert.deepStrictEqual(adminGet.security, [{ BearerAuth: [] }]);
+    assert.ok(adminGet.responses['401']);
+
+    // Group health route explicitly allows anonymous
+    const healthGet = doc.paths['/api/health']?.get;
+    assert.ok(healthGet);
+    assert.deepStrictEqual(healthGet.security, []);
+    assert.strictEqual(healthGet.responses['401'], undefined);
+  });
 });

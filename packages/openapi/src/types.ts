@@ -63,6 +63,7 @@ export interface OpenApiOperation {
   readonly parameters?: readonly OpenApiParameter[];
   readonly requestBody?: OpenApiRequestBody;
   readonly responses: Record<string, OpenApiResponse>;
+  readonly security?: readonly Record<string, readonly string[]>[];
 }
 
 export interface OpenApiPathItem {
@@ -85,6 +86,7 @@ export interface OpenApiDocument {
   readonly paths: Record<string, OpenApiPathItem>;
   readonly components?: Record<string, any>;
   readonly tags?: readonly OpenApiTag[];
+  readonly security?: readonly Record<string, readonly string[]>[];
 }
 
 export interface OpenApiOptions {
@@ -114,6 +116,12 @@ export interface OpenApiOptions {
   readonly servers?: readonly OpenApiServer[];
   /** Optional bridges for external schemas such as Zod. Return undefined when an adapter does not recognize the schema. */
   readonly schemaAdapters?: readonly OpenApiSchemaAdapter[];
+  /** Default security scheme name when endpoints require authorization (defaults to 'BearerAuth'). */
+  readonly defaultSecurityScheme?: string;
+  /** Pre-configured components (such as securitySchemes or schemas) to merge into the document. */
+  readonly components?: Record<string, any>;
+  /** Global security requirements applied across the document. */
+  readonly security?: readonly Record<string, readonly string[]>[];
 }
 
 export type OpenApiSchemaAdapter = (schema: unknown) => any | undefined;

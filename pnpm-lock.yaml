@@ -255,6 +255,9 @@ importers:
       '@tsnx/hosting':
         specifier: workspace:*
         version: link:../hosting
+      '@tsnx/openapi':
+        specifier: workspace:*
+        version: link:../openapi
       '@tsnx/testing':
         specifier: workspace:*
         version: link:../testing
