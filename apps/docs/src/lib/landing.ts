@@ -27,7 +27,7 @@ export const installCommands = {
 export const installCommand = installCommands.npm;
 
 export const frameworkStats = [
-  { label: "Architecture", value: "ASP.NET Inspired", sub: "Builder pattern & DI" },
+  { label: "Architecture", value: "Modular & Scalable", sub: "Builder pattern & DI" },
   { label: "Type Safety", value: "100% Native TS", sub: "Zero decorators required" },
   { label: "API Contracts", value: "OpenAPI 3.1", sub: "Scalar interactive UI" },
   { label: "Latest Release", value: "v2.1.0", sub: "Stable production build" }
