@@ -94,8 +94,8 @@ function VersionSwitcher({ activeVersion, basePath }: { activeVersion: string; b
     const slug = targetDocs.some((doc) => doc.slug === currentSlug) ? currentSlug : "introduction";
     router.push(`${targetPath}/${slug}`);
   }}>
-    <option value={version}>v{version} · RC</option>
-    <option value={stableVersion}>v{stableVersion} · Stable</option>
+    <option value={version}>v{version} · Stable</option>
+    <option value={stableVersion}>v{stableVersion} · v1.3.2</option>
   </select><ChevronDown size={13} aria-hidden="true" /></label>;
 }
 

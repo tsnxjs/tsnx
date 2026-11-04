@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@tsnx/web"><img src="https://img.shields.io/npm/v/@tsnx/web/rc?color=2563eb&label=npm" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/@tsnx/web"><img src="https://img.shields.io/npm/v/@tsnx/web?color=2563eb&label=npm" alt="npm version" /></a>
   <a href="https://github.com/tsnxjs/tsnx/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-2563eb.svg" alt="License: MIT" /></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D18.0.0-047857" alt="Node.js Version" /></a>
   <img src="https://img.shields.io/badge/OpenAPI-3.1-4d7c0f.svg" alt="OpenAPI 3.1" />
@@ -52,7 +52,7 @@ const builder = WebApplication.createBuilder();
 builder.services.addSingleton('database', new DatabaseConnection());
 addOpenApi(builder.services, {
   title: 'Catalog Service API',
-  version: '1.0.0-rc.1',
+  version: '2.0.0',
   description: 'Enterprise Product Catalog and Inventory Service',
 });
 
@@ -85,15 +85,15 @@ await app.run();
 
 | Package | Version | Description |
 |---|---|---|
-| [`@tsnx/web`](./packages/web) | `1.0.0-rc.1` | Native HTTP Web API engine, onion middleware, route matching, and request-scoped DI |
-| [`@tsnx/openapi`](./packages/openapi) | `1.0.0-rc.1` | Automatic OpenAPI 3.1 specification generation from route definitions |
-| [`@tsnx/scalar`](./packages/scalar) | `1.0.0-rc.1` | Embedded interactive Scalar API reference documentation endpoint |
-| [`@tsnx/hosting`](./packages/hosting) | `1.0.0-rc.1` | Application hosting foundation, Dependency Injection, Configuration, and Hosted Services |
-| [`@tsnx/hosting-abstractions`](./packages/hosting-abstractions) | `1.0.0-rc.1` | Zero-dependency contracts for DI (`IServiceCollection`), Configuration, Logging, and Lifecycle |
-| [`@tsnx/core`](./packages/core) | `1.0.0-rc.1` | Native TypeScript project discovery, workspace graph, and manifest parsing |
-| [`@tsnx/build`](./packages/build) | `1.0.0-rc.1` | TypeScript compiler orchestrator, configuration generator, and package synchronization |
-| [`@tsnx/cli`](./apps/cli) | `1.0.0-rc.2` | Unified developer CLI (`tsnx create`, `build`, `run`, `test`, `watch`, `ref`, `workspace`) |
-| [`@tsnx/testing`](./packages/testing) | `1.0.0-rc.1` | Integration testing utilities, `WebApplicationFactory`, and HTTP test client |
+| [`@tsnx/web`](./packages/web) | `2.0.0` | Native HTTP Web API engine, onion middleware, route matching, and request-scoped DI |
+| [`@tsnx/openapi`](./packages/openapi) | `2.0.0` | Automatic OpenAPI 3.1 specification generation from route definitions |
+| [`@tsnx/scalar`](./packages/scalar) | `2.0.0` | Embedded interactive Scalar API reference documentation endpoint |
+| [`@tsnx/hosting`](./packages/hosting) | `2.0.0` | Application hosting foundation, Dependency Injection, Configuration, and Hosted Services |
+| [`@tsnx/hosting-abstractions`](./packages/hosting-abstractions) | `2.0.0` | Zero-dependency contracts for DI (`IServiceCollection`), Configuration, Logging, and Lifecycle |
+| [`@tsnx/core`](./packages/core) | `2.0.0` | Native TypeScript project discovery, workspace graph, and manifest parsing |
+| [`@tsnx/build`](./packages/build) | `2.0.0` | TypeScript compiler orchestrator, configuration generator, and package synchronization |
+| [`@tsnx/cli`](./apps/cli) | `2.0.0` | Unified developer CLI (`tsnx create`, `build`, `run`, `test`, `watch`, `ref`, `workspace`) |
+| [`@tsnx/testing`](./packages/testing) | `2.0.0` | Integration testing utilities, `WebApplicationFactory`, and HTTP test client |
 
 ---
 
@@ -105,10 +105,10 @@ Install the TSNX CLI globally using your preferred package manager:
 
 ```bash
 # npm
-npm install -g @tsnx/cli@rc
+npm install -g @tsnx/cli
 
 # pnpm
-pnpm add -g @tsnx/cli@rc
+pnpm add -g @tsnx/cli
 ```
 
 ### Scaffold a New Service

@@ -23,7 +23,7 @@ export type Doc = {
 };
 
 export const repository = "https://github.com/tsnxjs/tsnx";
-export const version = "2.0.0-rc.3";
+export const version = "2.0.0";
 
 export const helloExample = "import { WebApplication, Results } from '@tsnx/web';\n\nconst builder = WebApplication.createBuilder();\nconst app = builder.build();\n\napp.mapGet('/hello', () => {\n  return Results.json({ message: 'Hello, TSNX!' });\n});\n\nawait app.run();";
 
@@ -92,7 +92,7 @@ export const docs: Doc[] = [
         "id": "familiar-by-design",
         "title": "Familiar by design",
         "text": "If you know ASP.NET, the architecture will feel familiar. TSNX uses JavaScript primitives where they fit: promises for asynchronous work, AbortSignal for cancellation, and explicit schema descriptors for runtime validation. TSNX adapts these concepts; it does not promise complete ASP.NET API parity.",
-        "note": "You are reading the TSNX v2.0.0 release candidate documentation. Review the migration notes before upgrading production applications."
+        "note": "You are reading the TSNX v2.0.0 documentation. Review the migration notes before upgrading production applications."
       },
       {
         "id": "request-journey",
@@ -140,8 +140,8 @@ export const docs: Doc[] = [
       {
         "id": "install-the-cli",
         "title": "Install the CLI",
-        "text": "Install the TSNX 2.0 release candidate globally using npm or pnpm. It is published on the rc dist-tag.",
-        "code": "npm install -g @tsnx/cli@2.0.0-rc.3\ntsnx --version\ntsnx --help",
+        "text": "Install the TSNX CLI globally using npm or pnpm.",
+        "code": "npm install -g @tsnx/cli\ntsnx --version\ntsnx --help",
         "language": "bash",
         "filename": "Terminal"
       },
@@ -157,7 +157,7 @@ export const docs: Doc[] = [
         "id": "existing-project",
         "title": "Add to an existing project",
         "text": "You can also use the HTTP and hosting packages directly in an existing TypeScript application. Compile and run your application with your existing ESM tooling.",
-        "code": "npm install @tsnx/web@2.0.0-rc.3 @tsnx/hosting@2.0.0-rc.3",
+        "code": "npm install @tsnx/web @tsnx/hosting",
         "language": "bash",
         "filename": "Terminal"
       },
@@ -361,7 +361,7 @@ export const docs: Doc[] = [
         "id": "package-metadata",
         "title": "Package configuration",
         "text": "Use package.json for the package name, dependencies, entry point, and TSNX metadata. Keep tsconfig.json focused on TypeScript compiler settings.",
-        "code": "{\n  \"name\": \"@acme/host\",\n  \"version\": \"0.1.0\",\n  \"type\": \"module\",\n  \"private\": true,\n  \"main\": \"./dist/main.js\",\n  \"tsnx\": {\n    \"name\": \"Host\",\n    \"type\": \"webapi\"\n  },\n  \"dependencies\": {\n    \"@acme/inventory\": \"workspace:*\",\n    \"@tsnx/web\": \"2.0.0-rc.3\"\n  },\n  \"devDependencies\": {\n    \"@types/node\": \"^22.13.9\"\n  }\n}",
+        "code": "{\n  \"name\": \"@acme/host\",\n  \"version\": \"0.1.0\",\n  \"type\": \"module\",\n  \"private\": true,\n  \"main\": \"./dist/main.js\",\n  \"tsnx\": {\n    \"name\": \"Host\",\n    \"type\": \"webapi\"\n  },\n  \"dependencies\": {\n    \"@acme/inventory\": \"workspace:*\",\n    \"@tsnx/web\": \"^2.0.0\"\n  },\n  \"devDependencies\": {\n    \"@types/node\": \"^22.13.9\"\n  }\n}",
         "language": "json",
         "filename": "Entrypoints/Host/package.json",
         "note": "Library projects use src/index.ts with main ./dist/index.js and types ./dist/index.d.ts in package.json. TypeScript references control build order; package dependencies make imports available at runtime."
@@ -1257,13 +1257,13 @@ export const docs: Doc[] = [
     "title": "Migrate to TSNX 2.0",
     "group": "Getting started",
     "source": "docs/TYPE_DESCRIPTOR_SCOPE.md",
-    "description": "Prepare existing request schemas for the TSNX 2.0 release candidate.",
+    "description": "Prepare existing request schemas for TSNX 2.0.",
     "sections": [
       {
         "id": "release-candidate",
-        "title": "Try the release candidate",
-        "text": "TSNX 2.0 is a major release candidate. Install matching package versions with the rc tag and test the migration in a branch before adopting it in production.",
-        "code": "npm install @tsnx/web@rc @tsnx/hosting@rc @tsnx/openapi@rc",
+        "title": "Upgrade to TSNX 2.0",
+        "text": "TSNX 2.0 is a major release. Install matching 2.0 package versions and test the migration in a branch before adopting it in production.",
+        "code": "npm install @tsnx/web@^2.0.0 @tsnx/hosting@^2.0.0 @tsnx/openapi@^2.0.0",
         "language": "bash",
         "filename": "Terminal"
       },
@@ -1305,7 +1305,7 @@ export const docs: Doc[] = [
         "id": "install-packages",
         "title": "Install the integrations",
         "text": "Add both integrations to the application. OpenAPI generates the document; Scalar serves the interactive reference.",
-        "code": "npm install @tsnx/openapi@2.0.0-rc.3 @tsnx/scalar@2.0.0-rc.3",
+        "code": "npm install @tsnx/openapi @tsnx/scalar",
         "language": "bash",
         "filename": "Terminal"
       },
@@ -2554,7 +2554,7 @@ export const docs: Doc[] = [
       {
         "id": "documentation-scope",
         "title": "Scope of these guides",
-        "text": "These guides describe the TSNX 2.0.0 release candidate package ecosystem. Examples are checked against exported TypeScript declarations and regression suites.",
+        "text": "These guides describe the TSNX 2.0.0 package ecosystem. Examples are checked against exported TypeScript declarations and regression suites.",
         "paragraphs": [
           "Implementation links and regression-test references accompany the guides. Source behavior takes precedence over older README examples, architecture proposals, and legacy samples. Where a feature is application-owned, the guide says so."
         ]

@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-11-04
+
+### Added
+- **Declarative Type Descriptors**: Added runtime descriptors in `@tsnx/web`: `enumeration()`, `literal()`, `union()`, `discriminatedUnion()`, `integer()`, and `isoDate()`.
+- **Strict Objects by Default**: Plain object binding schemas reject undeclared properties with 400 Bad Request Problem Details (`UNEXPECTED_PROPERTY`).
+- **Passthrough Objects**: Added `passthroughObject()` helper to explicitly opt into retaining undeclared properties.
+- **Non-coercive JSON Body Binding**: Strict type checking for JSON request payloads without implicit string-to-number or string-to-boolean coercion.
+- **Standard Schema Interoperability**: Direct first-class support for libraries implementing the Standard Schema specification (Zod, Valibot, ArkType).
+- **Structured Binding Issues**: Problem Details responses include an `issues` array alongside the `errors` dictionary with path, code, and message.
+- **OpenAPI 3.1 Enhancements**: Native descriptor-to-schema conversion, titled `oneOf` discriminated union variants for Scalar UI, `.withOpenApiDocs()`, and `schemaAdapters` extensibility.
+- **Documentation Version Switcher**: Dual-version documentation support for v2.0.0 and v1.3.2.
+
+### Changed
+- Promoted TSNX 2.0.0 release candidates to general availability (GA).
+
+
 ## [1.3.2] - 2026-10-23
 
 ### Fixed
