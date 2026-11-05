@@ -23,22 +23,18 @@ import {
 import { Brand, LandingHeader } from "@/components/docs-shell";
 import { Button } from "@/components/ui/button";
 import { FeatureExplorer } from "@/components/feature-explorer";
+import { HeroInteractiveGlow } from "@/components/interactive-glow";
+import { InteractivePipeline } from "@/components/interactive-pipeline";
+import { InteractiveTerminal } from "@/components/interactive-terminal";
 import { LandingInstallBar } from "@/components/landing-install-bar";
+import { SpotlightCard } from "@/components/spotlight-card";
 import { repository, version } from "@/lib/docs";
 import {
   featureShowcases,
   frameworkStats,
+  pipelineStages,
   workspaceTree,
 } from "@/lib/landing";
-
-const requestStages = [
-  { step: "01", name: "HTTP Request", detail: "Fast Node HTTP parser" },
-  { step: "02", name: "Middleware", detail: "Pipeline short-circuiting" },
-  { step: "03", name: "Route Match", detail: "Explicit radix mapping" },
-  { step: "04", name: "Model Binding", detail: "Schema parsing & args" },
-  { step: "05", name: "Handler & Filters", detail: "DI scoped execution" },
-  { step: "06", name: "HTTP Result", detail: "Standardized response" },
-];
 
 export async function LandingPage() {
   // Pre-render syntax highlighted code on server for instantaneous client render
@@ -57,19 +53,15 @@ export async function LandingPage() {
     themes: { light: "github-light", dark: "github-dark" },
   });
 
-  const cliQuickstart = `# Install CLI globally
-npm install -g @tsnx/cli
-
-# Scaffold a new Web API host
-tsnx create webapi Host
-
-# Run locally with hot reload
-cd Host && tsnx run`;
-
-  const cliQuickstartHtml = await codeToHtml(cliQuickstart, {
-    lang: "bash",
-    themes: { light: "github-light", dark: "github-dark" },
-  });
+  const renderedStages = await Promise.all(
+    pipelineStages.map(async (stage) => ({
+      ...stage,
+      codeHtml: await codeToHtml(stage.runtimeSnippet, {
+        lang: stage.step === "01" ? "json" : "typescript",
+        themes: { light: "github-light", dark: "github-dark" },
+      }),
+    }))
+  );
 
   return (
     <div className="landing-modern">
@@ -85,9 +77,11 @@ cd Host && tsnx run`;
         {/* HERO SECTION: Glowing Ambient Mesh + Huge Outline Logo + Centered Copy   */}
         {/* ========================================================================= */}
         <section className="hero-modern" aria-labelledby="hero-title">
-          {/* Ambient Glow Orbs & Subtle Grid Mesh */}
-          <div className="hero-ambient-glow" aria-hidden="true" />
+          {/* Dynamic Living Ambient Orbs reacting to mouse physics */}
+          <HeroInteractiveGlow />
           <div className="hero-grid-pattern" aria-hidden="true" />
+          {/* Smooth Fade Transition from glow to normal background */}
+          <div className="hero-bottom-fade" aria-hidden="true" />
 
           {/* Giant Outlined Watermark (Next.js inspired) */}
           <div className="hero-watermark-wrapper" aria-hidden="true">
@@ -241,8 +235,8 @@ cd Host && tsnx run`;
             </div>
 
             <div className="bento-grid">
-              {/* Bento Card 1: Request Lifecycle Flow */}
-              <div className="bento-card bento-wide">
+              {/* Bento Card 1: Interactive Request Lifecycle Flow */}
+              <SpotlightCard className="bento-wide">
                 <div className="bento-card-header">
                   <div className="bento-icon-wrapper">
                     <Network size={20} />
@@ -264,29 +258,15 @@ cd Host && tsnx run`;
                 <p className="bento-card-text">
                   An explicit request context and service scope moves cleanly
                   through every stage, with guaranteed disposal after work settles.
+                  Click or tap any stage below to inspect runtime behavior:
                 </p>
 
-                {/* Visual Pipeline Stages */}
-                <ol className="pipeline-flow-grid">
-                  {requestStages.map((stage) => (
-                    <li key={stage.step} className="pipeline-node">
-                      <div className="pipeline-node-top">
-                        <span className="pipeline-step">{stage.step}</span>
-                        <ChevronRight
-                          size={14}
-                          className="pipeline-arrow"
-                          aria-hidden="true"
-                        />
-                      </div>
-                      <span className="pipeline-name">{stage.name}</span>
-                      <span className="pipeline-detail">{stage.detail}</span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
+                {/* Interactive Visual Pipeline Stages */}
+                <InteractivePipeline stages={renderedStages} />
+              </SpotlightCard>
 
               {/* Bento Card 2: Native Project System */}
-              <div className="bento-card bento-split">
+              <SpotlightCard className="bento-split">
                 <div className="bento-split-copy">
                   <div className="bento-icon-wrapper">
                     <FolderTree size={20} />
@@ -364,10 +344,10 @@ cd Host && tsnx run`;
                     <span className="dep-tag dep-shared">SharedKernel</span>
                   </div>
                 </div>
-              </div>
+              </SpotlightCard>
 
               {/* Bento Card 3: Zero Decorators */}
-              <div className="bento-card">
+              <SpotlightCard>
                 <div className="bento-icon-wrapper">
                   <ShieldCheck size={20} />
                 </div>
@@ -382,10 +362,10 @@ cd Host && tsnx run`;
                   <span className="bento-tag">Fast Build Times</span>
                   <span className="bento-tag">Zero Polyfills</span>
                 </div>
-              </div>
+              </SpotlightCard>
 
               {/* Bento Card 4: High-Performance DI */}
-              <div className="bento-card">
+              <SpotlightCard>
                 <div className="bento-icon-wrapper">
                   <Cpu size={20} />
                 </div>
@@ -400,10 +380,10 @@ cd Host && tsnx run`;
                   <span className="bento-tag">Scoped</span>
                   <span className="bento-tag">Transient</span>
                 </div>
-              </div>
+              </SpotlightCard>
 
               {/* Bento Card 5: OpenAPI 3.1 & Scalar */}
-              <div className="bento-card">
+              <SpotlightCard>
                 <div className="bento-icon-wrapper">
                   <Code2 size={20} />
                 </div>
@@ -418,7 +398,7 @@ cd Host && tsnx run`;
                   <span className="bento-tag">Scalar UI</span>
                   <span className="bento-tag">SDK Generation Ready</span>
                 </div>
-              </div>
+              </SpotlightCard>
             </div>
           </div>
         </section>
@@ -455,19 +435,8 @@ cd Host && tsnx run`;
                 </div>
               </div>
 
-              <div className="cta-terminal">
-                <div className="cta-terminal-bar">
-                  <div className="window-dots" aria-hidden="true">
-                    <span className="dot dot-red" />
-                    <span className="dot dot-yellow" />
-                    <span className="dot dot-green" />
-                  </div>
-                  <span className="window-title">bash — 80x24</span>
-                </div>
-                <div
-                  className="highlighted-code cta-code"
-                  dangerouslySetInnerHTML={{ __html: cliQuickstartHtml }}
-                />
+              <div className="cta-terminal-wrapper">
+                <InteractiveTerminal />
               </div>
             </div>
           </div>

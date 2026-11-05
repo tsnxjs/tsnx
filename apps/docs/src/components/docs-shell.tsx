@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ThemeProvider, useTheme } from "next-themes";
 import { Command } from "cmdk";
-import { ArrowDown, ArrowRight, ArrowUp, Box, ChevronDown, Command as CommandIcon, ExternalLink, FileText, Github, Menu, Moon, Search, Sun, Terminal } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, Box, ChevronDown, Command as CommandIcon, ExternalLink, FileText, Github, Menu, Moon, Search, Sun, Terminal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { docs, repository, version, type Doc } from "@/lib/docs";
@@ -23,6 +23,8 @@ export function Brand() {
 }
 
 export function LandingHeader() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
     <header className="landing-floating-header">
       <div className="landing-floating-nav">
@@ -42,8 +44,41 @@ export function LandingHeader() {
           <Button asChild size="sm" className="landing-header-cta-btn">
             <Link href="/docs/quick-start">Get Started</Link>
           </Button>
+          <button
+            type="button"
+            className="landing-mobile-menu-btn"
+            onClick={() => setMobileOpen((prev) => !prev)}
+            aria-label={mobileOpen ? "Close menu" : "Open navigation menu"}
+            aria-expanded={mobileOpen}
+          >
+            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
         </div>
       </div>
+
+      {mobileOpen && (
+        <div className="landing-mobile-dropdown" role="dialog" aria-label="Mobile Navigation">
+          <div className="landing-mobile-nav-links">
+            <Link href="/docs/introduction" onClick={() => setMobileOpen(false)}>
+              Docs
+            </Link>
+            <a href="#features" onClick={() => setMobileOpen(false)}>
+              Features
+            </a>
+            <a href="#architecture" onClick={() => setMobileOpen(false)}>
+              Architecture
+            </a>
+            <Link href="/docs/quick-start" onClick={() => setMobileOpen(false)}>
+              Quick Start
+            </Link>
+            <Button asChild size="sm" className="landing-mobile-cta">
+              <Link href="/docs/quick-start" onClick={() => setMobileOpen(false)}>
+                Get Started
+              </Link>
+            </Button>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
@@ -58,20 +93,28 @@ export function SearchDocs({ pageDocs, basePath }: { pageDocs: Doc[]; basePath: 
   const router = useRouter();
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isEditable = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+      if (!isEditable && event.key === "/") {
+        event.preventDefault();
+        setOpen((value) => !value);
+        return;
+      }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault(); setOpen((value) => !value);
+        event.preventDefault();
+        setOpen((value) => !value);
       }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
   return <Dialog open={open} onOpenChange={setOpen}>
-    <DialogTrigger asChild><button className="search-trigger"><Search size={15} /><span>Search documentation...</span><kbd><CommandIcon size={11} /> K</kbd></button></DialogTrigger>
+    <DialogTrigger asChild><button className="search-trigger"><Search size={15} /><span>Search docs...</span><kbd><CommandIcon size={11} /> K</kbd></button></DialogTrigger>
     <DialogContent className="gap-0 overflow-hidden p-0">
       <DialogTitle className="sr-only">Search documentation</DialogTitle>
       <DialogDescription className="sr-only">Search guides and API concepts. Use arrow keys to select a result and Enter to open it.</DialogDescription>
       <Command label="Documentation search">
-        <div className="flex items-center gap-3 border-b px-5 pr-12"><Search className="size-4 text-muted-foreground" /><Command.Input autoFocus placeholder="What are you looking for?" className="h-16 w-full bg-transparent text-sm outline-none" /></div>
+        <div className="flex items-center gap-3 border-b px-5 pr-12"><Search className="size-4 text-muted-foreground" /><Command.Input autoFocus placeholder="What are you looking for? (Press / or ⌘K)" className="h-16 w-full bg-transparent text-sm outline-none" /></div>
         <Command.List className="max-h-[55vh] overflow-y-auto p-2">
           <Command.Empty className="px-4 py-12 text-center text-sm text-muted-foreground">No results found. Try “routing” or “services”.</Command.Empty>
           {[...new Set(pageDocs.map((doc) => doc.group))].map((group) => <Command.Group heading={group} key={group} className="search-group">{pageDocs.filter((doc) => doc.group === group).map((doc) => <Command.Item key={doc.slug} value={`${doc.title} ${doc.description} ${doc.sections.map((s) => `${s.title} ${s.text} ${s.paragraphs?.join(" ") ?? ""} ${s.table?.rows.flat().join(" ") ?? ""}`).join(" ")}`} onSelect={() => { setOpen(false); router.push(`${basePath}/${doc.slug}`); }} className="search-result"><FileText size={15} /><span>{doc.title}<small>{doc.description}</small></span><ArrowRight size={14} /></Command.Item>)}</Command.Group>)}
@@ -86,9 +129,54 @@ function SidebarNavigation({ close, pageDocs, activeVersion, basePath }: { close
   const pathname = usePathname();
   const groups = [...new Set(pageDocs.map((doc) => doc.group))];
   const quickStart = pageDocs.some((doc) => doc.slug === "quick-start") ? "quick-start" : "introduction";
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
+  const toggleGroup = (group: string) => {
+    setCollapsedGroups((prev) => ({ ...prev, [group]: !prev[group] }));
+  };
+
   return <>
     <Link href={`${basePath}/${quickStart}`} className="sidebar-start" onClick={close}><span className="sidebar-start-icon"><Terminal size={16} /></span><span>Start building<small>Your first API in minutes</small></span><ArrowRight size={14} /></Link>
-    <nav aria-label="Documentation">{groups.map((group) => <div className="nav-group" key={group}><p>{group}</p>{pageDocs.filter((doc) => doc.group === group).map((doc) => <Link key={doc.slug} href={`${basePath}/${doc.slug}`} onClick={close} aria-current={pathname === `${basePath}/${doc.slug}` || pathname === `${basePath}/${doc.slug}/` ? "page" : undefined} className="sidebar-link">{doc.title}{doc.slug === "quick-start" && <span className="nav-new">START</span>}</Link>)}</div>)}</nav>
+    <nav aria-label="Documentation">
+      {groups.map((group) => {
+        const isCollapsed = !!collapsedGroups[group];
+        const items = pageDocs.filter((doc) => doc.group === group);
+        const hasActiveItem = items.some(
+          (doc) => pathname === `${basePath}/${doc.slug}` || pathname === `${basePath}/${doc.slug}/`
+        );
+        const shouldShowItems = !isCollapsed || hasActiveItem;
+
+        return (
+          <div className={cn("nav-group", isCollapsed && !hasActiveItem && "nav-group-collapsed")} key={group}>
+            <button
+              type="button"
+              onClick={() => toggleGroup(group)}
+              className="nav-group-header"
+              aria-expanded={shouldShowItems}
+            >
+              <span>{group}</span>
+              <ChevronDown size={13} className={cn("nav-group-chevron", !shouldShowItems && "-rotate-90")} />
+            </button>
+            {shouldShowItems && (
+              <div className="nav-group-items">
+                {items.map((doc) => (
+                  <Link
+                    key={doc.slug}
+                    href={`${basePath}/${doc.slug}`}
+                    onClick={close}
+                    aria-current={pathname === `${basePath}/${doc.slug}` || pathname === `${basePath}/${doc.slug}/` ? "page" : undefined}
+                    className="sidebar-link"
+                  >
+                    {doc.title}
+                    {doc.slug === "quick-start" && <span className="nav-new">START</span>}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </nav>
     <div className="sidebar-bottom"><span className="flex items-center gap-2"><span className="status-dot" /> {activeVersion.includes("rc") ? "Release candidate" : "Stable release"}</span><span>v{activeVersion}</span></div>
   </>;
 }

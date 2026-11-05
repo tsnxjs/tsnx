@@ -23,7 +23,7 @@ export type Doc = {
 };
 
 export const repository = "https://github.com/tsnxjs/tsnx";
-export const version = "2.1.0";
+export const version = "2.1.1";
 
 export const helloExample = "import { WebApplication, Results } from '@tsnx/web';\n\nconst builder = WebApplication.createBuilder();\nconst app = builder.build();\n\napp.mapGet('/hello', () => {\n  return Results.json({ message: 'Hello, TSNX!' });\n});\n\nawait app.run();";
 
@@ -96,7 +96,7 @@ export const docs: Doc[] = [
         "id": "familiar-by-design",
         "title": "Familiar by design",
         "text": "If you know ASP.NET, the architecture will feel familiar. TSNX uses JavaScript primitives where they fit: promises for asynchronous work, AbortSignal for cancellation, and explicit schema descriptors for runtime validation. TSNX adapts these concepts; it does not promise complete ASP.NET API parity.",
-        "note": "You are reading the TSNX v2.1.0 documentation. Review the migration notes before upgrading production applications."
+        "note": "You are reading the TSNX v2.1.1 documentation. Review the migration notes before upgrading production applications."
       },
       {
         "id": "request-journey",
@@ -2140,7 +2140,6 @@ export const docs: Doc[] = [
       }
     ],
     "sources": [
-      "packages/mediator/src/index.ts",
       "packages/mediator/src/mediator.ts",
       "packages/mediator/src/__tests__/mediator.test.ts"
     ],
@@ -2640,15 +2639,15 @@ export const docs: Doc[] = [
   },
   {
     "slug": "features",
-    "title": "v1.3 Feature Map & Release Overview",
+    "title": "Feature Map & Release Overview",
     "group": "Reference",
-    "description": "Comprehensive overview of features, runtime contracts, and platform capabilities in TSNX v1.3.",
+    "description": "Comprehensive overview of features, runtime contracts, and platform capabilities in TSNX 2.1.",
     "source": "packages/web/src/index.ts",
     "sections": [
       {
         "id": "documentation-scope",
         "title": "Scope of these guides",
-        "text": "These guides describe the TSNX 2.1.0 package ecosystem. Examples are checked against exported TypeScript declarations and regression suites.",
+        "text": "These guides describe the TSNX 2.1.1 package ecosystem. Examples are checked against exported TypeScript declarations and regression suites.",
         "paragraphs": [
           "Implementation links and regression-test references accompany the guides. Source behavior takes precedence over older README examples, architecture proposals, and legacy samples. Where a feature is application-owned, the guide says so."
         ]

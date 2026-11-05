@@ -76,7 +76,7 @@ projects:
     const versionOutput = execFileSync(process.execPath, [CLI_BIN, '--version'], {
       encoding: 'utf-8',
     });
-    assert.ok(versionOutput.includes('tsnx v2.1.0'));
+    assert.ok(versionOutput.includes('tsnx v2.1.1'));
   });
 
   it('runs tsnx project list, graph, restore, build, and clean in workspace', () => {

@@ -1,6 +1,6 @@
 {
   "name": "@tsnx/auth",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "TSNX Authentication and Policy-Based Authorization Subsystem with JWT Bearer, JWKS, and Claims-based Identity",
   "license": "MIT",
   "type": "module",

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-11-05
+
+### Changed
+- **Unified Canonical Authentication API**: Streamlined `@tsnx/auth` to follow the single official TSNX pattern (`addAuthentication(builder.services)` and `addAuthorization(builder.services, ...)`), eliminating redundant alternative extension methods and prototype clutter.
+- **Documentation & Landing Page**: Updated official documentation and interactive landing page feature showcases.
+
 ## [2.1.0] - 2026-11-04
 
 ### Added

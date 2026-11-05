@@ -14,6 +14,8 @@ export type FeatureShowcaseItem = {
     endpoint: string;
     status: string;
     statusType: "success" | "info" | "purple";
+    latency?: string;
+    size?: string;
     details: string;
   };
 };
@@ -30,7 +32,7 @@ export const frameworkStats = [
   { label: "Architecture", value: "Modular & Scalable", sub: "Builder pattern & DI" },
   { label: "Type Safety", value: "100% Native TS", sub: "Zero decorators required" },
   { label: "API Contracts", value: "OpenAPI 3.1", sub: "Scalar interactive UI" },
-  { label: "Latest Release", value: "v2.1.0", sub: "Stable production build" }
+  { label: "Latest Release", value: "v2.1.1", sub: "Stable production build" }
 ];
 
 export const featureShowcases: FeatureShowcaseItem[] = [
@@ -69,7 +71,22 @@ await app.run();`,
       endpoint: "/api/v1/inventory/warehouses",
       status: "200 OK",
       statusType: "success",
-      details: '[ { "id": "wh_sea", "city": "Seattle", "capacity": 120000 }, ... ]'
+      latency: "12ms",
+      size: "264 B",
+      details: `[
+  {
+    "id": "wh_sea",
+    "city": "Seattle",
+    "capacity": 120000,
+    "status": "active"
+  },
+  {
+    "id": "wh_ams",
+    "city": "Amsterdam",
+    "capacity": 85000,
+    "status": "active"
+  }
+]`
     }
   },
   {
@@ -105,7 +122,18 @@ app.mapPost('/warehouses', [body(CreateWarehouse)], async (warehouse) => {
       endpoint: "/warehouses",
       status: "201 Created",
       statusType: "success",
-      details: '{ "name": "Berlin Hub", "capacity": 45000, "tags": ["cold-storage"] }'
+      latency: "18ms",
+      size: "184 B",
+      details: `{
+  "id": "wh_ber_09",
+  "name": "Berlin Hub",
+  "capacity": 45000,
+  "tags": [
+    "cold-storage",
+    "automated"
+  ],
+  "verified": true
+}`
     }
   },
   {
@@ -138,11 +166,27 @@ builder.services.addScoped(WarehouseRepository);
 
 const app = builder.build();`,
     preview: {
-      method: "DI",
+      method: "RESOLVE",
       endpoint: "Container Service Graph",
       status: "Scope Resolved",
       statusType: "purple",
-      details: "Singleton: DatabasePool ➔ Scoped: WarehouseRepository"
+      latency: "2ms",
+      size: "310 B",
+      details: `{
+  "scope": "request_scoped_7f2a",
+  "services": {
+    "DatabasePool": {
+      "lifetime": "Singleton",
+      "status": "connected",
+      "poolSize": 20
+    },
+    "WarehouseRepository": {
+      "lifetime": "Scoped",
+      "instanceId": "repo_9c14",
+      "resolved": true
+    }
+  }
+}`
     }
   },
   {
@@ -175,10 +219,20 @@ app.mapGroup('/secure')
   .addEndpointFilter(requireApiKey);`,
     preview: {
       method: "FILTER",
-      endpoint: "/secure/*",
+      endpoint: "/secure/telemetry",
       status: "200 Authorized",
       statusType: "success",
-      details: "x-api-key verified ➔ Proceeding to handler"
+      latency: "4ms",
+      size: "216 B",
+      details: `{
+  "authorized": true,
+  "principal": {
+    "keyId": "k_live_sec8819",
+    "tier": "enterprise"
+  },
+  "pipeline": "requireApiKey ➔ next()",
+  "durationMs": 3.8
+}`
     }
   },
   {
@@ -214,7 +268,18 @@ await app.run();`,
       endpoint: "System Process Lifecycle",
       status: "Online",
       statusType: "info",
-      details: "Port 3000 ➔ SIGTERM graceful drainage handler attached"
+      latency: "1ms",
+      size: "192 B",
+      details: `{
+  "status": "online",
+  "uptimeSeconds": 86420,
+  "port": 3000,
+  "signalHandlers": [
+    "SIGINT",
+    "SIGTERM"
+  ],
+  "draining": false
+}`
     }
   },
   {
@@ -229,27 +294,46 @@ await app.run();`,
       "Exportable openapi.json for SDK generators and clients"
     ],
     docSlug: "openapi",
-    filename: "src/docs.ts",
+    filename: "src/main.ts",
     language: "typescript",
-    code: `import { WebApplication, mapOpenApi, mapScalarUi } from '@tsnx/web';
+    code: `import { WebApplication, Results } from '@tsnx/web';
+import { addOpenApi, mapOpenApi } from '@tsnx/openapi';
+import { mapScalarApiReference } from '@tsnx/scalar';
+
+const builder = WebApplication.createBuilder();
+addOpenApi(builder.services, {
+  info: { title: 'Logistics Fleet API', version: '2.1.0' }
+});
 
 const app = builder.build();
 
-// Expose OpenAPI 3.1 specification endpoint
-mapOpenApi(app, {
-  path: '/openapi.json',
-  title: 'Logistics Fleet API',
-  version: '2.1.0'
-});
+// Expose OpenAPI 3.1 specification & Scalar interactive reference
+mapOpenApi(app);
+mapScalarApiReference(app);
 
-// Mount interactive Scalar API documentation UI
-mapScalarUi(app, { path: '/docs/api' });`,
+await app.run();`,
     preview: {
       method: "SPEC",
-      endpoint: "/docs/api (Scalar)",
+      endpoint: "/openapi.json",
       status: "OpenAPI 3.1",
       statusType: "purple",
-      details: "Scalar UI active ➔ Interactive reference ready"
+      latency: "8ms",
+      size: "4.8 KB",
+      details: `{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Logistics Fleet API",
+    "version": "2.1.0"
+  },
+  "paths": {
+    "/warehouses": {
+      "get": {
+        "operationId": "ListWarehouses"
+      }
+    }
+  },
+  "scalarUi": "/scalar/v1"
+}`
     }
   }
 ];
@@ -270,3 +354,109 @@ export const workspaceTree = `Acme/
 ├── package.json
 ├── pnpm-workspace.yaml
 └── tsconfig.json`;
+
+export type PipelineStageItem = {
+  step: string;
+  name: string;
+  summary: string;
+  runtimeSnippet: string;
+  badge: string;
+  details: string;
+};
+
+export const pipelineStages: PipelineStageItem[] = [
+  {
+    step: "01",
+    name: "Receive",
+    summary: "Incoming HTTP stream & Request ID",
+    badge: "TRANSPORT",
+    details: "The raw Node.js socket stream is accepted. A unique collision-resistant requestId is assigned and injected into the nascent context.",
+    runtimeSnippet: `{
+  "id": "req_01j98ab761km",
+  "method": "POST",
+  "path": "/api/v1/orders",
+  "headers": {
+    "host": "api.tsnx.dev",
+    "authorization": "Bearer eyJhbGciOi...",
+    "content-type": "application/json"
+  },
+  "timestamp": 1730707200142
+}`
+  },
+  {
+    step: "02",
+    name: "Scope",
+    summary: "Request-bound DI container initialized",
+    badge: "IOC ENGINE",
+    details: "An isolated request DI scope is branched from the root container. Scoped services instantiated during this request will be tracked for automatic disposal.",
+    runtimeSnippet: `const requestScope = rootContainer.createScope({
+  requestId: ctx.id,
+  lifetime: "scoped",
+  trackedDisposables: new Set()
+});
+// Scoped services (e.g. DbTransaction, CurrentUser)
+// share state only within this single request.`
+  },
+  {
+    step: "03",
+    name: "Middleware",
+    summary: "Auth, CORS, & rate-limiting pipeline",
+    badge: "PIPELINE",
+    details: "Middlewares execute in registered order. Any middleware can short-circuit with a custom Result (e.g., 401 Unauthorized) or enrich ctx.state.",
+    runtimeSnippet: `await useCors(ctx, next);
+await useAuth(ctx, next);
+// Authenticated user enriched onto context:
+ctx.state.user = {
+  id: "usr_9942",
+  roles: ["merchant", "admin"],
+  organizationId: "org_alpha"
+};`
+  },
+  {
+    step: "04",
+    name: "Route Match",
+    summary: "Radix tree path matching & extraction",
+    badge: "ROUTING",
+    details: "Deterministic pattern match resolves the incoming method and path to the registered endpoint definition, extracting route parameters without regex overhead.",
+    runtimeSnippet: `// Matched route:
+// POST /api/v1/orders
+{
+  route: "/api/v1/orders",
+  handler: createOrderHandler,
+  tags: ["Orders"],
+  operationId: "orders_create"
+}`
+  },
+  {
+    step: "05",
+    name: "Execute",
+    summary: "TypeBox / Zod validation & handler invocation",
+    badge: "EXECUTION",
+    details: "Request body is validated against the endpoint contract. The handler receives resolved DI dependencies and returns an explicit Result type.",
+    runtimeSnippet: `// Injected dependencies:
+const orderService = requestScope.get(OrderService);
+
+// Validated payload:
+const payload = ctx.body; // Safe & typed: CreateOrderInput
+
+// Explicit response returned:
+return Results.created({
+  id: "ord_108",
+  status: "pending",
+  total: 49.99
+});`
+  },
+  {
+    step: "06",
+    name: "Settle",
+    summary: "Response committed & scope disposed",
+    badge: "LIFECYCLE",
+    details: "Headers and payload are written to the HTTP response stream. The request scope is finalized, calling dispose() on all opened transactions and resources.",
+    runtimeSnippet: `// Response committed: HTTP 201 Created (1.8ms total)
+await requestScope.dispose();
+// Disposed:
+// - Database client transaction released back to pool
+// - Request telemetry flushed
+// - Zero memory leak risk`
+  }
+];
