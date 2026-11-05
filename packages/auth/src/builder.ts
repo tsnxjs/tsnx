@@ -89,17 +89,15 @@ declare module '@tsnx/hosting-abstractions' {
   interface IServiceCollection {
     /**
      * Adds and configures the TSNX Authentication Subsystem in DI.
-     * Modeled after ASP.NET Core services.AddAuthentication().
+     * Modeled after ASP.NET Core builder.services.addAuthentication().
      */
-    addAuthentication?(options?: AuthenticationOptions): AuthenticationBuilder;
-    AddAuthentication?(options?: AuthenticationOptions): AuthenticationBuilder;
+    addAuthentication(options?: AuthenticationOptions): AuthenticationBuilder;
 
     /**
      * Adds and configures the TSNX Policy-Based Authorization Subsystem in DI.
-     * Modeled after ASP.NET Core services.AddAuthorization().
+     * Modeled after ASP.NET Core builder.services.addAuthorization().
      */
-    addAuthorization?(configure?: (authz: AuthorizationService) => void): this;
-    AddAuthorization?(configure?: (authz: AuthorizationService) => void): this;
+    addAuthorization(configure?: (authz: AuthorizationService) => void): this;
   }
 }
 
@@ -107,17 +105,15 @@ declare module '@tsnx/hosting' {
   interface ServiceCollection {
     /**
      * Adds and configures the TSNX Authentication Subsystem in DI.
-     * Modeled after ASP.NET Core services.AddAuthentication().
+     * Modeled after ASP.NET Core builder.services.addAuthentication().
      */
     addAuthentication(options?: AuthenticationOptions): AuthenticationBuilder;
-    AddAuthentication?(options?: AuthenticationOptions): AuthenticationBuilder;
 
     /**
      * Adds and configures the TSNX Policy-Based Authorization Subsystem in DI.
-     * Modeled after ASP.NET Core services.AddAuthorization().
+     * Modeled after ASP.NET Core builder.services.addAuthorization().
      */
     addAuthorization(configure?: (authz: AuthorizationService) => void): this;
-    AddAuthorization?(configure?: (authz: AuthorizationService) => void): this;
   }
 }
 
@@ -125,17 +121,13 @@ declare module '@tsnx/web' {
   interface WebApplicationBuilder {
     /**
      * Adds and configures the TSNX Authentication Subsystem in DI.
-     * Modeled after ASP.NET Core builder.Services.AddAuthentication().
      */
     addAuthentication(options?: AuthenticationOptions): AuthenticationBuilder;
-    AddAuthentication?(options?: AuthenticationOptions): AuthenticationBuilder;
 
     /**
      * Adds and configures the TSNX Policy-Based Authorization Subsystem in DI.
-     * Modeled after ASP.NET Core builder.Services.AddAuthorization().
      */
     addAuthorization(configure?: (authz: AuthorizationService) => void): this;
-    AddAuthorization?(configure?: (authz: AuthorizationService) => void): this;
   }
 
   interface WebApplication {
@@ -143,31 +135,26 @@ declare module '@tsnx/web' {
      * Enables authentication middleware in the pipeline, evaluating incoming credentials and setting ctx.user.
      */
     useAuthentication(): this;
-    UseAuthentication?(): this;
 
     /**
      * Enables authorization middleware in the pipeline, evaluating endpoint policies before route execution.
      */
     useAuthorization(): this;
-    UseAuthorization?(): this;
 
     /**
      * Convenience method enabling both authentication and authorization middleware in correct sequence.
      */
     useAuth(): this;
-    UseAuth?(): this;
 
     /**
-     * Diagnostic guard: hints user if addAuthorization was accidentally called on app instead of builder.
+     * Diagnostic guard: hints user if addAuthorization was accidentally called on app instead of builder.services.
      */
     addAuthorization?(...args: any[]): never;
-    AddAuthorization?(...args: any[]): never;
 
     /**
-     * Diagnostic guard: hints user if addAuthentication was accidentally called on app instead of builder.
+     * Diagnostic guard: hints user if addAuthentication was accidentally called on app instead of builder.services.
      */
     addAuthentication?(...args: any[]): never;
-    AddAuthentication?(...args: any[]): never;
   }
 }
 
@@ -251,13 +238,4 @@ if (!(WebApplication.prototype as any).addAuthentication) {
   };
 }
 
-// PascalCase aliases for ASP.NET Core developer ergonomics
-(WebApplicationBuilder.prototype as any).AddAuthentication = (WebApplicationBuilder.prototype as any).addAuthentication;
-(WebApplicationBuilder.prototype as any).AddAuthorization = (WebApplicationBuilder.prototype as any).addAuthorization;
-(ServiceCollection.prototype as any).AddAuthentication = (ServiceCollection.prototype as any).addAuthentication;
-(ServiceCollection.prototype as any).AddAuthorization = (ServiceCollection.prototype as any).addAuthorization;
-(WebApplication.prototype as any).UseAuthentication = (WebApplication.prototype as any).useAuthentication;
-(WebApplication.prototype as any).UseAuthorization = (WebApplication.prototype as any).useAuthorization;
-(WebApplication.prototype as any).UseAuth = (WebApplication.prototype as any).useAuth;
-(WebApplication.prototype as any).AddAuthorization = (WebApplication.prototype as any).addAuthorization;
-(WebApplication.prototype as any).AddAuthentication = (WebApplication.prototype as any).addAuthentication;
+

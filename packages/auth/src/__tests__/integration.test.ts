@@ -5,10 +5,7 @@ import assert from 'node:assert/strict';
 import { WebApplication, Results } from '@tsnx/web';
 import { WebApplicationFactory } from '@tsnx/testing';
 import { generateOpenApiDocument } from '@tsnx/openapi';
-import {
-  addAuthentication,
-  addAuthorization,
-} from '../index.js';
+import '../index.js';
 
 const TEST_SECRET = 'a-very-strong-test-secret-key-of-32-chars!!';
 
@@ -35,14 +32,14 @@ describe('@tsnx/auth: WebApplication End-to-End Integration', () => {
   function createApp(): WebApplication {
     const builder = WebApplication.createBuilder();
 
-    addAuthentication(builder.services).addJwtBearer({
+    builder.services.addAuthentication().addJwtBearer({
       secretKey: TEST_SECRET,
     }).addApiKey({
       headerName: 'x-service-token',
       validator: 'secret-s2s-token-123',
     });
 
-    addAuthorization(builder.services, (authz) => {
+    builder.services.addAuthorization((authz) => {
       authz.addPolicy('AdminPolicy', (p) => p.requireRole('admin'));
       authz.addPolicy('InventoryManager', (p) => p.requireClaim('dept', 'inventory'));
     });

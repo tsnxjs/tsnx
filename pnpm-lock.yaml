@@ -283,6 +283,25 @@ importers:
         specifier: ^2.9.1
         version: 2.9.1
 
+  packages/health-checks:
+    dependencies:
+      '@tsnx/hosting-abstractions':
+        specifier: workspace:*
+        version: link:../hosting-abstractions
+      '@tsnx/web':
+        specifier: workspace:*
+        version: link:../web
+    devDependencies:
+      '@tsnx/hosting':
+        specifier: workspace:*
+        version: link:../hosting
+      '@tsnx/testing':
+        specifier: workspace:*
+        version: link:../testing
+      '@types/node':
+        specifier: ^22.13.9
+        version: 22.20.5
+
   packages/hosting:
     dependencies:
       '@tsnx/hosting-abstractions':
