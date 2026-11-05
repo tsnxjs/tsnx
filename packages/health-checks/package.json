@@ -1,6 +1,6 @@
 {
   "name": "@tsnx/health-checks",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "TSNX Health Checks Subsystem with Liveness, Readiness probes, tagging, and ASP.NET Core-style mapHealthChecks",
   "license": "MIT",
   "type": "module",

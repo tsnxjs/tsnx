@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-11-05
+
+### Added
+- **@tsnx/health-checks Subsystem**: Enterprise Health Checks modeled after ASP.NET Core `Microsoft.AspNetCore.Diagnostics.HealthChecks`.
+  - **Liveness & Readiness Probes**: Component status classification (`Healthy` 200, `Degraded` 200, `Unhealthy` 503).
+  - **Tag-Based Filtering**: Map separate endpoints for orchestrator probes (e.g. `/healthz/live` and `/healthz/ready`).
+  - **Built-in Checks**: `PingHealthCheck` and `MemoryHealthCheck` (heap & rss usage tracking).
+  - **Single Canonical Registration**: `builder.services.addHealthChecks(hc => ...)` and `app.mapHealthChecks('/healthz')`.
+- **@tsnx/resilience Subsystem**: Polly v8 and `Microsoft.Extensions.Resilience` fault tolerance engine for TypeScript.
+  - **Retry Strategy**: Exponential, linear, and constant backoff with randomized jitter to prevent thundering herd retry waves, plus `shouldRetry` predicates.
+  - **Circuit Breaker Strategy**: State machine (`Closed` -> `Open` -> `HalfOpen`), failure rate threshold, break duration, and `manualTrip()` / `manualReset()` for **Chaos Testing** and **TSNX Studio**.
+  - **Timeout Strategy**: Latency enforcement with standard `AbortSignal` cooperative cancellation propagation.
+  - **Fallback Strategy**: Graceful degradation when operations fail.
+  - **Standard Token Integration**: Uses TSNX's unified `createToken<ResiliencePipeline<T>>()` without redundant token primitives. Resolved via `ctx.services.get(Token)`.
+- **@tsnx/telemetry Subsystem**: Distributed Tracing, Ambient Async Context, and Observability pipeline.
+  - **Ambient Async Context**: Powered by `AsyncLocalStorage` (padanan .NET `System.Diagnostics.Activity.Current`), automatic parent-child span linkage across asynchronous calls without manual span passing.
+  - **W3C Distributed Tracing**: Automatic extraction and injection of standard `traceparent` headers across microservices, and `X-Trace-Id` response header.
+  - **Prometheus Metrics**: High-performance `Counter`, `Gauge`, and `Histogram` with `/metrics` standard text exposition.
+  - **TSNX Studio Foundation**: In-memory ring buffer and real-time `/_tsnx/telemetry` endpoint streaming live spans, waterfall traces, and metric snapshots into the upcoming visual developer dashboard.
+
+### Changed
+- **Architectural Decision Record**: Added [ADR 0016](docs/decisions/0016-observability-resilience-and-studio.md) detailing Observability, Resilience, and TSNX Studio connectivity.
+
 ## [2.1.1] - 2026-11-05
 
 ### Changed

@@ -1,6 +1,6 @@
 {
   "name": "@tsnx/resilience",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "TSNX Fault Tolerance and Resilience Pipeline with Polly-modeled Retry, Circuit Breaker, Timeout, and Fallback",
   "license": "MIT",
   "type": "module",

@@ -1,6 +1,6 @@
 {
   "name": "@tsnx/hosting-abstractions",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "TSNX Hosting & Dependency Injection Abstractions (IServiceCollection, ServiceToken, IConfiguration, ILogger)",
   "license": "MIT",
   "type": "module",

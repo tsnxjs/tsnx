@@ -32,7 +32,7 @@ export const frameworkStats = [
   { label: "Architecture", value: "Modular & Scalable", sub: "Builder pattern & DI" },
   { label: "Type Safety", value: "100% Native TS", sub: "Zero decorators required" },
   { label: "API Contracts", value: "OpenAPI 3.1", sub: "Scalar interactive UI" },
-  { label: "Latest Release", value: "v2.1.1", sub: "Stable production build" }
+  { label: "Latest Release", value: "v2.2.0", sub: "Stable production build" }
 ];
 
 export const featureShowcases: FeatureShowcaseItem[] = [

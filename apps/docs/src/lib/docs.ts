@@ -23,7 +23,7 @@ export type Doc = {
 };
 
 export const repository = "https://github.com/tsnxjs/tsnx";
-export const version = "2.1.1";
+export const version = "2.2.0";
 
 export const helloExample = "import { WebApplication, Results } from '@tsnx/web';\n\nconst builder = WebApplication.createBuilder();\nconst app = builder.build();\n\napp.mapGet('/hello', () => {\n  return Results.json({ message: 'Hello, TSNX!' });\n});\n\nawait app.run();";
 
@@ -70,6 +70,18 @@ export const docs: Doc[] = [
               "Resource Server JWT Bearer authentication, JWKS key rotation, and policy authorization"
             ],
             [
+              "@tsnx/health-checks",
+              "Liveness & readiness health probes, tag-based filtering, and RFC status codes"
+            ],
+            [
+              "@tsnx/resilience",
+              "Fault tolerance: retries with jitter, circuit breakers with chaos controls, timeouts, and fallbacks"
+            ],
+            [
+              "@tsnx/telemetry",
+              "Ambient distributed tracing (Activity.current), W3C traceparent, Prometheus metrics, and Studio streaming"
+            ],
+            [
               "@tsnx/hosting",
               "Dependency injection, configuration, and lifecycle"
             ],
@@ -96,7 +108,7 @@ export const docs: Doc[] = [
         "id": "familiar-by-design",
         "title": "Familiar by design",
         "text": "If you know ASP.NET, the architecture will feel familiar. TSNX uses JavaScript primitives where they fit: promises for asynchronous work, AbortSignal for cancellation, and explicit schema descriptors for runtime validation. TSNX adapts these concepts; it does not promise complete ASP.NET API parity.",
-        "note": "You are reading the TSNX v2.1.1 documentation. Review the migration notes before upgrading production applications."
+        "note": "You are reading the TSNX v2.2.0 documentation. Review the migration notes before upgrading production applications."
       },
       {
         "id": "request-journey",
@@ -1522,6 +1534,141 @@ export const docs: Doc[] = [
     ]
   },
   {
+    "slug": "health-checks",
+    "title": "Health Checks",
+    "group": "Application services",
+    "source": "packages/health-checks/src/index.ts",
+    "description": "Expose Kubernetes and cloud orchestrator health probes, assess system dependencies, and report status via mapHealthChecks.",
+    "sections": [
+      {
+        "id": "overview",
+        "title": "Overview",
+        "text": "The @tsnx/health-checks package provides enterprise health checking modeled after ASP.NET Core Microsoft.AspNetCore.Diagnostics.HealthChecks. It enables liveness and readiness probes for orchestrators (Kubernetes, Docker, Cloud Run) and feeds live health data into TSNX Studio."
+      },
+      {
+        "id": "installation",
+        "title": "Installation",
+        "text": "Install @tsnx/health-checks into your application or workspace.",
+        "code": "pnpm add @tsnx/health-checks\n# or\nnpm install @tsnx/health-checks",
+        "language": "bash",
+        "filename": "Terminal"
+      },
+      {
+        "id": "quick-start",
+        "title": "Quick Start",
+        "text": "Use the single canonical API pattern builder.services.addHealthChecks() to register checks, and app.mapHealthChecks() to expose HTTP endpoints.",
+        "code": "import { WebApplication } from '@tsnx/web';\nimport '@tsnx/health-checks';\nimport { HealthCheckResult, PingHealthCheck, MemoryHealthCheck } from '@tsnx/health-checks';\n\nconst builder = WebApplication.createBuilder();\n\n// 1. Single Canonical API Registration\nbuilder.services.addHealthChecks((hc) => {\n  // Liveness probe (is process alive)\n  hc.addCheck('ping', new PingHealthCheck(), { tags: ['live'] });\n\n  // Memory check\n  hc.addCheck('memory', new MemoryHealthCheck({ maxHeapBytes: 1024 * 1024 * 1024 }), { tags: ['live'] });\n\n  // Readiness probe (can accept traffic)\n  hc.addCheck('database', async () => {\n    const isOk = await checkDbConnection();\n    return isOk ? HealthCheckResult.healthy('DB reachable') : HealthCheckResult.unhealthy('DB down');\n  }, { tags: ['ready'] });\n});\n\nconst app = builder.build();\n\n// 2. Map Endpoints\napp.mapHealthChecks('/healthz'); // Full report\napp.mapHealthChecks('/healthz/live', { predicate: (c) => c.tags.includes('live') });\napp.mapHealthChecks('/healthz/ready', { predicate: (c) => c.tags.includes('ready') });\n\nawait app.run();",
+        "filename": "src/main.ts"
+      },
+      {
+        "id": "status-codes",
+        "title": "Status Codes & Precedence",
+        "text": "Each health check reports Healthy, Degraded, or Unhealthy. The overall status follows standard precedence:",
+        "paragraphs": [
+          "Healthy (HTTP 200): All checks are functioning normally.",
+          "Degraded (HTTP 200): One or more components experienced degraded performance, but none failed completely.",
+          "Unhealthy (HTTP 503): One or more critical dependencies failed. Orchestrators will fail readiness and route traffic away."
+        ]
+      }
+    ],
+    "sources": [
+      "packages/health-checks/src/builder.ts",
+      "packages/health-checks/src/endpoints.ts",
+      "packages/health-checks/src/service.ts"
+    ],
+    "related": [
+      "resilience",
+      "telemetry"
+    ]
+  },
+  {
+    "slug": "resilience",
+    "title": "Resilience & Fault Tolerance",
+    "group": "Application services",
+    "source": "packages/resilience/src/index.ts",
+    "description": "Build fault-tolerant pipelines with Polly-modeled Retries with jitter, Circuit Breakers with Chaos Testing controls, Timeouts, and Fallbacks.",
+    "sections": [
+      {
+        "id": "overview",
+        "title": "Overview",
+        "text": "Modeled after Polly v8 and Microsoft.Extensions.Resilience, @tsnx/resilience protects your APIs against transient network outages, database spikes, and third-party API downtime."
+      },
+      {
+        "id": "installation",
+        "title": "Installation",
+        "text": "Install @tsnx/resilience into your application or workspace.",
+        "code": "pnpm add @tsnx/resilience\n# or\nnpm install @tsnx/resilience",
+        "language": "bash",
+        "filename": "Terminal"
+      },
+      {
+        "id": "token-pipelines",
+        "title": "Type-Safe Pipelines with createToken()",
+        "text": "Define pipelines using TSNX's standard createToken() primitive from @tsnx/hosting-abstractions. Resolve them directly via ctx.services.get() with zero decorators required.",
+        "code": "import { createToken } from '@tsnx/hosting-abstractions';\nimport { WebApplication, Results } from '@tsnx/web';\nimport '@tsnx/resilience';\nimport { ResiliencePipeline } from '@tsnx/resilience';\n\nexport const PaymentPipeline = createToken<ResiliencePipeline<PaymentResult>>('PaymentPipeline');\n\nconst builder = WebApplication.createBuilder();\n\nbuilder.services.addResilience((resilience) => {\n  resilience.addPipeline(PaymentPipeline, (pipeline) => {\n    pipeline\n      .addFallback({\n        fallbackAction: async () => ({ status: 'QUEUED_OFFLINE' }),\n      })\n      .addRetry({\n        maxAttempts: 3,\n        backoff: 'exponential',\n        jitter: true,\n      })\n      .addCircuitBreaker({\n        failureThreshold: 0.5,\n        breakDurationMs: 30000,\n      })\n      .addTimeout(3000);\n  });\n});\n\nconst app = builder.build();\n\napp.mapPost('/charge', async (ctx) => {\n  const pipeline = ctx.services.get(PaymentPipeline);\n  const result = await pipeline.execute(async (rCtx) => {\n    return await paymentGateway.charge(rCtx.cancellationToken);\n  });\n  return Results.json(result);\n});\n\nawait app.run();",
+        "filename": "src/main.ts"
+      },
+      {
+        "id": "circuit-breaker-chaos",
+        "title": "Circuit Breaker & TSNX Studio Chaos Testing",
+        "text": "Circuit breakers statefully track failure rates across a sliding window. In addition to automatic tripping (Closed -> Open -> HalfOpen), manualTrip() and manualReset() allow TSNX Studio and chaos engineering tests to simulate downstream outages interactively without cutting physical network connections."
+      }
+    ],
+    "sources": [
+      "packages/resilience/src/builder.ts",
+      "packages/resilience/src/pipeline.ts",
+      "packages/resilience/src/strategies/circuit-breaker.ts"
+    ],
+    "related": [
+      "health-checks",
+      "telemetry"
+    ]
+  },
+  {
+    "slug": "telemetry",
+    "title": "Telemetry & Observability",
+    "group": "Application services",
+    "source": "packages/telemetry/src/index.ts",
+    "description": "Ambient distributed tracing, W3C traceparent propagation, Prometheus metrics, and live visual waterfall streaming for TSNX Studio.",
+    "sections": [
+      {
+        "id": "overview",
+        "title": "Overview",
+        "text": "The @tsnx/telemetry package brings OpenTelemetry standards, ambient async context (padanan Activity.Current di .NET), Prometheus metrics, and TSNX Studio live tracing into your application."
+      },
+      {
+        "id": "installation",
+        "title": "Installation",
+        "text": "Install @tsnx/telemetry into your application or workspace.",
+        "code": "pnpm add @tsnx/telemetry\n# or\nnpm install @tsnx/telemetry",
+        "language": "bash",
+        "filename": "Terminal"
+      },
+      {
+        "id": "ambient-context",
+        "title": "Ambient Async Context & Activity.current",
+        "text": "Built on Node.js AsyncLocalStorage, HTTP requests automatically initialize an ambient root span. Services injected anywhere down the call stack can inspect Activity.current or Activity.currentTraceId without passing trace objects through function arguments.",
+        "code": "import { WebApplication, Results } from '@tsnx/web';\nimport '@tsnx/telemetry';\nimport { ITracerToken } from '@tsnx/telemetry';\n\nconst builder = WebApplication.createBuilder();\n\nbuilder.services.addTelemetry((options) => {\n  options.serviceName = 'catalog-api';\n  options.serviceVersion = '2.2.0';\n});\n\nconst app = builder.build();\n\napp.useTelemetry();\napp.mapMetrics('/metrics'); // Prometheus scraper\napp.mapTelemetry('/_tsnx/telemetry'); // TSNX Studio live feed\n\napp.mapGet('/products', async (ctx) => {\n  const tracer = ctx.services.get(ITracerToken);\n  return await tracer.trace('catalog.query', async (span) => {\n    span.setAttribute('query.limit', 10);\n    return Results.json([{ id: 1, name: 'Item' }]);\n  });\n});\n\nawait app.run();",
+        "filename": "src/main.ts"
+      },
+      {
+        "id": "studio-otlp-connectivity",
+        "title": "Zero-Config TSNX Studio & OTLP Connectivity",
+        "text": "When running tsnx dev --studio or running in containers, @tsnx/telemetry automatically detects TSNX_STUDIO_ENDPOINT or OTEL_EXPORTER_OTLP_ENDPOINT without extra code. Spans and metrics stream into the TSNX Studio visual dashboard in real time."
+      }
+    ],
+    "sources": [
+      "packages/telemetry/src/builder.ts",
+      "packages/telemetry/src/tracer.ts",
+      "packages/telemetry/src/context.ts",
+      "packages/telemetry/src/metrics.ts"
+    ],
+    "related": [
+      "health-checks",
+      "resilience"
+    ]
+  },
+  {
     "slug": "dependency-injection",
     "title": "Dependency injection",
     "group": "Application services",
@@ -2641,13 +2788,13 @@ export const docs: Doc[] = [
     "slug": "features",
     "title": "Feature Map & Release Overview",
     "group": "Reference",
-    "description": "Comprehensive overview of features, runtime contracts, and platform capabilities in TSNX 2.1.",
+    "description": "Comprehensive overview of features, runtime contracts, and platform capabilities in TSNX 2.2.",
     "source": "packages/web/src/index.ts",
     "sections": [
       {
         "id": "documentation-scope",
         "title": "Scope of these guides",
-        "text": "These guides describe the TSNX 2.1.1 package ecosystem. Examples are checked against exported TypeScript declarations and regression suites.",
+        "text": "These guides describe the TSNX 2.2.0 package ecosystem. Examples are checked against exported TypeScript declarations and regression suites.",
         "paragraphs": [
           "Implementation links and regression-test references accompany the guides. Source behavior takes precedence over older README examples, architecture proposals, and legacy samples. Where a feature is application-owned, the guide says so."
         ]

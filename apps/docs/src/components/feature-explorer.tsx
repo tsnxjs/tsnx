@@ -90,7 +90,7 @@ export function FeatureExplorer({ items }: { items: ShowcaseRenderedItem[] }) {
   const headersList = [
     { key: "status", value: current.preview.status, isStatus: true },
     { key: "content-type", value: "application/json; charset=utf-8" },
-    { key: "x-powered-by", value: "tsnx/2.1.1 (node.js)" },
+    { key: "x-powered-by", value: "tsnx/2.2.0 (node.js)" },
     { key: "x-request-id", value: `req_${current.id}_982a` },
     { key: "date", value: "Wed, 05 Nov 2026 08:38:00 GMT" },
     { key: "cache-control", value: "no-cache, no-store" },

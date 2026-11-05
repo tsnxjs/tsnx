@@ -1,6 +1,6 @@
 {
   "name": "@tsnx/telemetry",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "TSNX Distributed Tracing, Ambient Async Context, Metrics, and Studio/OTLP Observability Subsystem",
   "license": "MIT",
   "type": "module",
