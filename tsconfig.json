@@ -12,6 +12,7 @@
     { "path": "./packages/mediator" },
     { "path": "./packages/auth" },
     { "path": "./packages/health-checks" },
+    { "path": "./packages/resilience" },
     { "path": "./apps/cli" }
   ]
 }

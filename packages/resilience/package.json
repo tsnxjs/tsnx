@@ -1,0 +1,51 @@
+{
+  "name": "@tsnx/resilience",
+  "version": "2.1.1",
+  "description": "TSNX Fault Tolerance and Resilience Pipeline with Polly-modeled Retry, Circuit Breaker, Timeout, and Fallback",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/__tests__",
+    "!dist/**/*.tsbuildinfo",
+    "!dist/**/*.map",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "typecheck": "tsc -b --noEmit",
+    "test": "node ../../scripts/test-runner.js"
+  },
+  "dependencies": {
+    "@tsnx/hosting-abstractions": "workspace:*"
+  },
+  "devDependencies": {
+    "@tsnx/hosting": "workspace:*",
+    "@tsnx/web": "workspace:*",
+    "@tsnx/testing": "workspace:*",
+    "@types/node": "^22.13.9"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tsnxjs/tsnx.git",
+    "directory": "packages/resilience"
+  },
+  "bugs": "https://github.com/tsnxjs/tsnx/issues",
+  "homepage": "https://github.com/tsnxjs/tsnx#readme"
+}
